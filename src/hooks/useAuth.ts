@@ -4,7 +4,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiPost, apiGet, setAccessToken, ApiResponse } from '../lib/api';
+import { apiPost, apiGet, setAccessToken, getAccessToken } from '../lib/api';
 
 // Types
 export interface User {
@@ -81,6 +81,7 @@ export const useCurrentUser = () => {
       const response = await authApi.getMe();
       return response.data;
     },
+    enabled: !!getAccessToken(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: false,
   });

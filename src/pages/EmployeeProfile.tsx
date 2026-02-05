@@ -1,228 +1,121 @@
+import { useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Phone, Calendar, Hash, Building, Briefcase } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Building, Briefcase } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvatarInitials } from "@/components/AvatarInitials";
 import { StatusBadge } from "@/components/StatusBadge";
-import { AttendanceHeatmap } from "@/components/AttendanceHeatmap";
 import { KPICard } from "@/components/KPICard";
-import { useAppSelector } from "@/store/hooks";
-import { format } from "date-fns";
-import { Users, Clock, DollarSign, Calendar as CalendarIcon } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useAttendance, useEmployee } from "@/hooks";
 
 export default function EmployeeProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { employees } = useAppSelector((state) => state.employees);
-  const { records } = useAppSelector((state) => state.attendance);
 
-  const employee = employees.find((e) => e.id === id);
+  const employeeQuery = useEmployee(id || "");
+  const attendanceQuery = useAttendance({ employeeId: id, limit: 10, page: 1 });
 
-  if (!employee) {
-    return (
-      <AppShell>
-        <div className="text-center py-12">
-          <h2 className="text-xl font-semibold text-foreground">Employee not found</h2>
-          <Button className="mt-4" onClick={() => navigate("/employees")}>
-            Back to Employees
-          </Button>
-        </div>
-      </AppShell>
+  const employee = employeeQuery.data?.data;
+  const attendanceRecords = attendanceQuery.data?.data || [];
+
+  const attendanceStats = useMemo(() => {
+    return attendanceRecords.reduce(
+      (acc, item) => {
+        if (item.status === "present" || item.status === "late") acc.present += 1;
+        if (item.status === "absent") acc.absent += 1;
+        if (item.status === "on_leave" || item.status === "half_day") acc.leave += 1;
+        acc.hours += Number(item.workingHours || item.hoursWorked || 0);
+        return acc;
+      },
+      { present: 0, absent: 0, leave: 0, hours: 0 }
     );
-  }
+  }, [attendanceRecords]);
 
-  const employeeAttendance = records
-    .filter((r) => r.employeeId === employee.id)
-    .map((r) => ({ date: r.date, status: r.status }));
-
-  const presentDays = employeeAttendance.filter((a) => a.status === "present").length;
-  const lateDays = employeeAttendance.filter((a) => a.status === "late").length;
-  const absentDays = employeeAttendance.filter((a) => a.status === "absent").length;
-
-  const totalSalary =
-    employee.salary.basic +
-    employee.salary.hra +
-    employee.salary.transport +
-    employee.salary.medical +
-    employee.salary.overtime;
+  const fullName = employee?.name || `${employee?.firstName || ""} ${employee?.lastName || ""}`.trim();
 
   return (
-    <AppShell showSearch={false}>
+    <AppShell>
       <div className="space-y-6">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/employees")}
-          className="text-muted-foreground hover:text-foreground"
-        >
+        <Button variant="ghost" className="w-fit" onClick={() => navigate("/employees") }>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Employees
+          Back to employees
         </Button>
 
-        {/* Header Card */}
-        <div className="bg-card border border-border rounded-lg p-6">
-          <div className="flex flex-col md:flex-row md:items-start gap-6">
-            <AvatarInitials name={employee.name} size="xl" />
-            <div className="flex-1">
-              <div className="flex flex-col md:flex-row md:items-center gap-3 mb-2">
-                <h1 className="text-2xl font-bold text-foreground">{employee.name}</h1>
-                <StatusBadge variant={employee.status === "active" ? "success" : "neutral"}>
-                  {employee.status === "active" ? "Active" : "Inactive"}
-                </StatusBadge>
-              </div>
-              <p className="text-lg text-muted-foreground">{employee.designation}</p>
-              <p className="text-muted-foreground">{employee.department} Department</p>
+        {employeeQuery.isLoading && <p className="text-sm text-muted-foreground">Loading employee...</p>}
+        {employeeQuery.isError && <p className="text-sm text-danger">Unable to load employee profile.</p>}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-                <div className="flex items-center gap-2 text-sm">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">{employee.email}</span>
+        {employee && (
+          <>
+            <div className="bg-card border border-border rounded-lg p-6">
+              <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
+                <div className="flex items-center gap-4">
+                  <AvatarInitials name={fullName || "Unknown"} size="lg" />
+                  <div>
+                    <h1 className="text-2xl font-bold text-foreground">{fullName || "Unknown"}</h1>
+                    <p className="text-muted-foreground font-mono">{employee.employeeId || employee.code || "N/A"}</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">{employee.phone}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">
-                    Joined {format(new Date(employee.joinedDate), "MMM d, yyyy")}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Hash className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground font-mono">{employee.code}</span>
-                </div>
+                <StatusBadge variant={employee.status === "active" ? "success" : "neutral"}>{employee.status}</StatusBadge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground"><Mail className="h-4 w-4" />{employee.email || "-"}</div>
+                <div className="flex items-center gap-2 text-muted-foreground"><Phone className="h-4 w-4" />{employee.phone || "-"}</div>
+                <div className="flex items-center gap-2 text-muted-foreground"><Building className="h-4 w-4" />{employee.departmentName || employee.department || "-"}</div>
+                <div className="flex items-center gap-2 text-muted-foreground"><Briefcase className="h-4 w-4" />{employee.designation || "-"}</div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="bg-card border border-border">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="attendance">Attendance</TabsTrigger>
-            <TabsTrigger value="salary">Salary Structure</TabsTrigger>
-            <TabsTrigger value="leaves">Leave Balance</TabsTrigger>
-          </TabsList>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <KPICard
-                title="Present Days"
-                value={presentDays}
-                icon={Users}
-              />
-              <KPICard
-                title="Late Days"
-                value={lateDays}
-                icon={Clock}
-              />
-              <KPICard
-                title="Total Salary"
-                value={`${(totalSalary / 1000).toFixed(0)}K`}
-                prefix="PKR"
-                icon={DollarSign}
-              />
-              <KPICard
-                title="Leave Balance"
-                value={employee.leaveBalance.annual + employee.leaveBalance.sick + employee.leaveBalance.casual}
-                icon={CalendarIcon}
-              />
+              <KPICard title="Present Days" value={attendanceStats.present} />
+              <KPICard title="Absent Days" value={attendanceStats.absent} />
+              <KPICard title="Leave Days" value={attendanceStats.leave} />
+              <KPICard title="Hours Worked" value={attendanceStats.hours.toFixed(1)} />
             </div>
-          </TabsContent>
 
-          {/* Attendance Tab */}
-          <TabsContent value="attendance">
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Monthly Attendance</h3>
-              <AttendanceHeatmap data={employeeAttendance} size="md" />
-            </div>
-          </TabsContent>
-
-          {/* Salary Tab */}
-          <TabsContent value="salary">
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-6">Salary Breakdown</h3>
-              <div className="space-y-4">
-                <div className="flex justify-between py-3 border-b border-border">
-                  <span className="text-muted-foreground">Basic Salary</span>
-                  <span className="font-medium text-foreground">
-                    PKR {employee.salary.basic.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between py-3 border-b border-border">
-                  <span className="text-muted-foreground">House Rent Allowance (HRA)</span>
-                  <span className="font-medium text-foreground">
-                    PKR {employee.salary.hra.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between py-3 border-b border-border">
-                  <span className="text-muted-foreground">Transport Allowance</span>
-                  <span className="font-medium text-foreground">
-                    PKR {employee.salary.transport.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between py-3 border-b border-border">
-                  <span className="text-muted-foreground">Medical Allowance</span>
-                  <span className="font-medium text-foreground">
-                    PKR {employee.salary.medical.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between py-3 border-b border-border">
-                  <span className="text-muted-foreground">Overtime</span>
-                  <span className="font-medium text-foreground">
-                    PKR {employee.salary.overtime.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between py-3 bg-elevated rounded-lg px-4 -mx-4">
-                  <span className="font-semibold text-foreground">Gross Salary</span>
-                  <span className="font-bold text-primary">
-                    PKR {totalSalary.toLocaleString()}
-                  </span>
-                </div>
+            <div className="bg-card border border-border rounded-lg overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <h3 className="text-lg font-semibold text-foreground">Recent Attendance</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-elevated hover:bg-elevated">
+                      <TableHead>Date</TableHead>
+                      <TableHead>Check In</TableHead>
+                      <TableHead>Check Out</TableHead>
+                      <TableHead>Hours</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {attendanceRecords.map((record) => (
+                      <TableRow key={record.id} className="hover:bg-elevated transition-colors">
+                        <TableCell>{record.date}</TableCell>
+                        <TableCell>{record.checkIn || "-"}</TableCell>
+                        <TableCell>{record.checkOut || "-"}</TableCell>
+                        <TableCell>{Number(record.workingHours || record.hoursWorked || 0).toFixed(1)}</TableCell>
+                        <TableCell>
+                          <StatusBadge variant={record.status === "absent" ? "danger" : record.status === "late" ? "warning" : "success"}>
+                            {record.status.replace("_", " ")}
+                          </StatusBadge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </div>
-          </TabsContent>
-
-          {/* Leaves Tab */}
-          <TabsContent value="leaves">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-card border border-border rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-medium text-muted-foreground">Annual Leave</h4>
-                  <StatusBadge variant="info">Available</StatusBadge>
-                </div>
-                <p className="text-3xl font-bold text-foreground">
-                  {employee.leaveBalance.annual}
-                  <span className="text-sm font-normal text-muted-foreground ml-2">days</span>
-                </p>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-medium text-muted-foreground">Sick Leave</h4>
-                  <StatusBadge variant="warning">Available</StatusBadge>
-                </div>
-                <p className="text-3xl font-bold text-foreground">
-                  {employee.leaveBalance.sick}
-                  <span className="text-sm font-normal text-muted-foreground ml-2">days</span>
-                </p>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-medium text-muted-foreground">Casual Leave</h4>
-                  <StatusBadge variant="success">Available</StatusBadge>
-                </div>
-                <p className="text-3xl font-bold text-foreground">
-                  {employee.leaveBalance.casual}
-                  <span className="text-sm font-normal text-muted-foreground ml-2">days</span>
-                </p>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+          </>
+        )}
       </div>
     </AppShell>
   );

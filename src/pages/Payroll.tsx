@@ -1,13 +1,7 @@
-import { Play, DollarSign, Minus, FileText, Wallet } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Play, DollarSign, Minus, FileText, Wallet, CheckCircle } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -18,158 +12,121 @@ import {
 } from "@/components/ui/table";
 import { KPICard } from "@/components/KPICard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useAppSelector, useAppDispatch } from "@/store/hooks";
-import { setSelectedMonth } from "@/store/slices/payrollSlice";
+import { useApprovePayroll, useCreatePayrollRun, usePayrollRuns, useProcessPayroll } from "@/hooks";
+
+const monthLabel = (month: number, year: number) =>
+  new Date(year, month - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
 export default function Payroll() {
-  const dispatch = useAppDispatch();
-  const { records, selectedMonth } = useAppSelector((state) => state.payroll);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  const monthRecords = records.filter((r) => r.month === selectedMonth);
+  const payrollRunsQuery = usePayrollRuns({ page: 1, limit: 20, year: selectedYear });
+  const createRun = useCreatePayrollRun();
+  const processRun = useProcessPayroll();
+  const approveRun = useApprovePayroll();
 
-  // Calculate totals
-  const totals = monthRecords.reduce(
-    (acc, r) => ({
-      gross: acc.gross + r.basic + r.allowances,
-      deductions: acc.deductions + r.deductions,
-      tax: acc.tax + r.tax,
-      net: acc.net + r.netPay,
-    }),
-    { gross: 0, deductions: 0, tax: 0, net: 0 }
-  );
+  const runs = payrollRunsQuery.data?.data || [];
+  const latestRun = runs[0];
 
-  const statusVariant = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "success";
-      case "processing":
-        return "info";
-      case "pending":
-        return "warning";
-      case "on-hold":
-        return "neutral";
-      default:
-        return "neutral";
+  const totals = useMemo(() => {
+    if (!latestRun) {
+      return { gross: 0, deductions: 0, tax: 0, net: 0 };
     }
+
+    return {
+      gross: latestRun.totalGrossSalary,
+      deductions: latestRun.totalDeductions,
+      tax: latestRun.totalTax,
+      net: latestRun.totalNetSalary,
+    };
+  }, [latestRun]);
+
+  const handleCreateCurrentMonthRun = () => {
+    const now = new Date();
+    createRun.mutate({ month: now.getMonth() + 1, year: now.getFullYear() });
   };
 
   return (
     <AppShell>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Payroll</h1>
-            <p className="text-muted-foreground mt-1">
-              Process and manage monthly payroll
-            </p>
+            <p className="text-muted-foreground mt-1">Process and manage monthly payroll</p>
           </div>
+
           <div className="flex items-center gap-3">
-            <Select
-              value={selectedMonth}
-              onValueChange={(value) => dispatch(setSelectedMonth(value))}
-            >
-              <SelectTrigger className="w-48 bg-background">
-                <SelectValue placeholder="Select month" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="2024-11">November 2024</SelectItem>
-                <SelectItem value="2024-10">October 2024</SelectItem>
-                <SelectItem value="2024-09">September 2024</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button>
+            <Button variant="outline" onClick={() => setSelectedYear((year) => year - 1)}>
+              Previous Year
+            </Button>
+            <p className="text-sm text-muted-foreground">{selectedYear}</p>
+            <Button variant="outline" onClick={() => setSelectedYear((year) => year + 1)}>
+              Next Year
+            </Button>
+            <Button onClick={handleCreateCurrentMonthRun} disabled={createRun.isPending}>
               <Play className="h-4 w-4 mr-2" />
-              Run Payroll
+              {createRun.isPending ? "Creating..." : "Create Current Run"}
             </Button>
           </div>
         </div>
 
-        {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard
-            title="Total Gross"
-            value={`${(totals.gross / 1000000).toFixed(2)}M`}
-            prefix="PKR"
-            icon={DollarSign}
-          />
-          <KPICard
-            title="Total Deductions"
-            value={`${(totals.deductions / 1000).toFixed(0)}K`}
-            prefix="PKR"
-            icon={Minus}
-          />
-          <KPICard
-            title="Total Tax"
-            value={`${(totals.tax / 1000).toFixed(0)}K`}
-            prefix="PKR"
-            icon={FileText}
-          />
-          <KPICard
-            title="Net Payable"
-            value={`${(totals.net / 1000000).toFixed(2)}M`}
-            prefix="PKR"
-            icon={Wallet}
-          />
+          <KPICard title="Total Gross" value={`${(totals.gross / 1000000).toFixed(2)}M`} prefix="PKR" icon={DollarSign} />
+          <KPICard title="Total Deductions" value={`${(totals.deductions / 1000).toFixed(0)}K`} prefix="PKR" icon={Minus} />
+          <KPICard title="Total Tax" value={`${(totals.tax / 1000).toFixed(0)}K`} prefix="PKR" icon={FileText} />
+          <KPICard title="Net Payable" value={`${(totals.net / 1000000).toFixed(2)}M`} prefix="PKR" icon={Wallet} />
         </div>
 
-        {/* Payroll Table */}
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-elevated hover:bg-elevated">
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Employee
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
-                    Basic
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
-                    Allowances
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
-                    Deductions
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
-                    Tax
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
-                    Net Pay
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Status
-                  </TableHead>
+                  <TableHead>Period</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Total Employees</TableHead>
+                  <TableHead className="text-right">Gross</TableHead>
+                  <TableHead className="text-right">Net</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {monthRecords.map((record) => (
-                  <TableRow
-                    key={record.id}
-                    className="hover:bg-elevated transition-colors"
-                  >
-                    <TableCell className="font-medium text-foreground">
-                      {record.employeeName}
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      PKR {record.basic.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      PKR {record.allowances.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right text-danger-foreground">
-                      -PKR {record.deductions.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right text-danger-foreground">
-                      -PKR {record.tax.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold text-foreground">
-                      PKR {record.netPay.toLocaleString()}
-                    </TableCell>
+                {runs.map((run) => (
+                  <TableRow key={run.id} className="hover:bg-elevated transition-colors">
+                    <TableCell className="font-medium text-foreground">{monthLabel(run.month, run.year)}</TableCell>
                     <TableCell>
-                      <StatusBadge variant={statusVariant(record.status)}>
-                        {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                      <StatusBadge
+                        variant={
+                          run.status === "approved"
+                            ? "success"
+                            : run.status === "completed"
+                            ? "info"
+                            : run.status === "processing"
+                            ? "warning"
+                            : "neutral"
+                        }
+                      >
+                        {run.status}
                       </StatusBadge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{run.totalEmployees || 0}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">PKR {run.totalGrossSalary.toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-semibold text-foreground">PKR {run.totalNetSalary.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        {run.status === "draft" && (
+                          <Button size="sm" variant="outline" onClick={() => processRun.mutate(run.id)}>
+                            <Play className="h-4 w-4 mr-1" />
+                            Process
+                          </Button>
+                        )}
+                        {run.status === "completed" && (
+                          <Button size="sm" variant="outline" onClick={() => approveRun.mutate(run.id)}>
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

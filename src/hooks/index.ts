@@ -21,6 +21,8 @@ export * from './usePayroll';
 // AI
 export * from './useAI';
 
+// Settings
+export * from './useSettings';
+
 // UI Hooks (existing)
-export { useMobile } from './use-mobile';
 export { useToast, toast } from './use-toast';

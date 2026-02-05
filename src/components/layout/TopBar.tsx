@@ -1,6 +1,8 @@
 import { Search, Bell, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useCurrentUser, useLogout } from "@/hooks";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +17,11 @@ interface TopBarProps {
 }
 
 export function TopBar({ showSearch = true }: TopBarProps) {
+  const navigate = useNavigate();
+  const userQuery = useCurrentUser();
+  const logout = useLogout();
+  const user = userQuery.data;
+
   return (
     <header className="h-16 border-b border-border bg-surface flex items-center justify-between px-6">
       {/* Search */}
@@ -54,16 +61,27 @@ export function TopBar({ showSearch = true }: TopBarProps) {
               <div className="h-8 w-8 rounded-full bg-primary-dim flex items-center justify-center">
                 <User className="h-4 w-4 text-primary" />
               </div>
-              <span className="text-sm font-medium hidden sm:inline">Admin</span>
+              <span className="text-sm font-medium hidden sm:inline">
+                {user?.employee?.firstName || user?.email?.split("@")[0] || "User"}
+              </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/employees")}>Profile</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/settings")}>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-danger">Logout</DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-danger"
+              onClick={() =>
+                logout.mutate(undefined, {
+                  onSettled: () => navigate("/login", { replace: true }),
+                })
+              }
+            >
+              Logout
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
