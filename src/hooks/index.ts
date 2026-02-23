@@ -21,6 +21,9 @@ export * from './usePayroll';
 // AI
 export * from './useAI';
 
+// Dashboards
+export * from './useDashboard';
+
 // Settings
 export * from './useSettings';
 

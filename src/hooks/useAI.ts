@@ -100,6 +100,42 @@ export interface ChatMessage {
   responseTime: number;
 }
 
+export interface EmployeeAIInsights {
+  employeeId: string;
+  monthSummary: {
+    presentDays: number;
+    absentDays: number;
+    lateDays: number;
+    totalHours: number;
+  };
+  leaveBalances: Array<{
+    leaveTypeId: string;
+    leaveTypeName: string;
+    remainingDays: number;
+  }>;
+  latestPayslip: {
+    month: number;
+    year: number;
+    grossSalary: number;
+    totalDeductions: number;
+    netSalary: number;
+    status: string;
+  } | null;
+  aiInsights: {
+    insights: Array<{
+      type: string;
+      severity: string;
+      title: string;
+      description: string;
+    }>;
+    actions: Array<{
+      type: string;
+      label: string;
+      path: string;
+    }>;
+  };
+}
+
 // API functions
 const aiApi = {
   getDashboardStats: () => apiGet<{
@@ -170,6 +206,8 @@ const aiApi = {
 
   getChatHistory: (sessionId: string) =>
     apiGet<Array<{ role: string; content: string; timestamp: string }>>(`/ai/chatbot/history/${sessionId}`),
+
+  getEmployeeInsights: () => apiGet<EmployeeAIInsights>('/ai/employee/me'),
 };
 
 // Hooks
@@ -181,11 +219,15 @@ export const useAIDashboardStats = () => {
   });
 };
 
-export const useAIAlerts = (filters: { page?: number; limit?: number; type?: string; severity?: string; status?: string } = {}) => {
+export const useAIAlerts = (
+  filters: { page?: number; limit?: number; type?: string; severity?: string; status?: string } = {},
+  enabled = true
+) => {
   return useQuery({
     queryKey: ['aiAlerts', filters],
     queryFn: () => aiApi.getAlerts(filters),
     staleTime: 30 * 1000,
+    enabled,
   });
 };
 
@@ -287,5 +329,13 @@ export const useChatHistory = (sessionId: string) => {
     queryKey: ['chatHistory', sessionId],
     queryFn: () => aiApi.getChatHistory(sessionId),
     enabled: !!sessionId,
+  });
+};
+
+export const useEmployeeAIInsights = () => {
+  return useQuery({
+    queryKey: ['employeeAIInsights'],
+    queryFn: aiApi.getEmployeeInsights,
+    staleTime: 60 * 1000,
   });
 };
