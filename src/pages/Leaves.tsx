@@ -58,14 +58,13 @@ export default function Leaves() {
   const userQuery = useCurrentUser();
   const leavesQuery = useLeaves({ limit: 50, page: 1 });
   const leaveTypesQuery = useLeaveTypes();
-  const employeesQuery = useEmployees({ limit: 100, page: 1 });
-
   const createLeave = useCreateLeave();
   const approveLeave = useApproveLeave();
   const rejectLeave = useRejectLeave();
 
   const currentUser = userQuery.data;
   const isHR = currentUser?.role === "hr" || currentUser?.role === "admin";
+  const employeesQuery = useEmployees({ limit: 100, page: 1 }, isHR);
   const selectedEmployeeId = employeeId || currentUser?.employee?.id;
 
   const leaveBalanceQuery = useLeaveBalance(selectedEmployeeId || "", new Date().getFullYear());

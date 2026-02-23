@@ -93,11 +93,12 @@ const employeeApi = {
 };
 
 // Hooks
-export const useEmployees = (filters: EmployeeFilters = {}) => {
+export const useEmployees = (filters: EmployeeFilters = {}, enabled = true) => {
   return useQuery({
     queryKey: ['employees', filters],
     queryFn: () => employeeApi.getAll(filters),
     staleTime: 30 * 1000, // 30 seconds
+    enabled,
   });
 };
 

@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { AttendanceHeatmap } from "@/components/AttendanceHeatmap";
 import { ChartCard } from "@/components/ChartCard";
 import { format } from "date-fns";
-import { useAttendance, useCheckIn, useCheckOut, useDailyStats } from "@/hooks";
+import { useAttendance, useCheckIn, useCheckOut, useCurrentUser, useDailyStats } from "@/hooks";
 
 const mapStatus = (status: string): "present" | "absent" | "late" | "leave" | "weekend" | "holiday" => {
   if (status === "on_leave" || status === "half_day") return "leave";
@@ -24,8 +24,10 @@ const mapStatus = (status: string): "present" | "absent" | "late" | "leave" | "w
 };
 
 export default function Attendance() {
+  const userQuery = useCurrentUser();
+  const isEmployee = userQuery.data?.role === "employee";
   const attendanceQuery = useAttendance({ limit: 100, page: 1 });
-  const dailyStatsQuery = useDailyStats();
+  const dailyStatsQuery = useDailyStats(undefined, !isEmployee);
   const checkIn = useCheckIn();
   const checkOut = useCheckOut();
 
@@ -59,7 +61,7 @@ export default function Attendance() {
           </div>
         </div>
 
-        {dailyStats && (
+        {!isEmployee && dailyStats && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
             <ChartCard title="Total" subtitle="Employees">{dailyStats.totalEmployees}</ChartCard>
             <ChartCard title="Present" subtitle="Today">{dailyStats.present}</ChartCard>

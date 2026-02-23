@@ -159,7 +159,7 @@ export default function Employees() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => encodedRouteId && navigate(`/employees/${encodedRouteId}`)}
+                          onClick={() => encodedRouteId && navigate(`/hr/employees/${encodedRouteId}`)}
                           disabled={!encodedRouteId}
                           className="text-muted-foreground hover:text-foreground"
                         >

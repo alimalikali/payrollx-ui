@@ -52,7 +52,7 @@ export default function EmployeeProfile() {
   return (
     <AppShell>
       <div className="space-y-6">
-        <Button variant="ghost" className="w-fit" onClick={() => navigate("/employees") }>
+        <Button variant="ghost" className="w-fit" onClick={() => navigate("/hr/employees") }>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to employees
         </Button>

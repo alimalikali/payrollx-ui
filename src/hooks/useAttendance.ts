@@ -162,10 +162,11 @@ export const useAttendanceSummary = (employeeId: string, month?: number, year?: 
   });
 };
 
-export const useDailyStats = (date?: string) => {
+export const useDailyStats = (date?: string, enabled = true) => {
   return useQuery({
     queryKey: ['dailyStats', date],
     queryFn: () => attendanceApi.getDailyStats(date),
     staleTime: 60 * 1000,
+    enabled,
   });
 };
