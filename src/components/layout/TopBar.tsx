@@ -24,9 +24,14 @@ export function TopBar({ showSearch = true }: TopBarProps) {
   const userQuery = useCurrentUser();
   const logout = useLogout();
   const user = userQuery.data;
-  const alertsQuery = useAIAlerts(alertFilters);
+  const isEmployee = user?.role === "employee";
+  const alertsQuery = useAIAlerts(alertFilters, !isEmployee);
   const alerts = alertsQuery.data?.data || [];
   const totalAlerts = alertsQuery.data?.meta?.total ?? alerts.length;
+  const dashboardPath = isEmployee ? "/employee/dashboard" : "/hr/dashboard";
+  const aiPath = isEmployee ? "/employee/ai-insights" : "/hr/ai-insights";
+  const profilePath = isEmployee ? "/employee/profile" : "/hr/employees";
+  const settingsPath = "/hr/settings";
 
   const getSeverityClasses = (severity: string) => {
     switch (severity) {
@@ -59,6 +64,7 @@ export function TopBar({ showSearch = true }: TopBarProps) {
       {/* Right side */}
       <div className="flex items-center gap-4">
         {/* Notifications */}
+        {!isEmployee && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -89,7 +95,7 @@ export function TopBar({ showSearch = true }: TopBarProps) {
                 <DropdownMenuItem
                   key={alert.id}
                   className="flex flex-col items-start gap-1"
-                  onClick={() => navigate("/ai-insights")}
+                  onClick={() => navigate(aiPath)}
                 >
                   <div className="flex items-center gap-2">
                     <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${getSeverityClasses(alert.severity)}`}>
@@ -105,11 +111,12 @@ export function TopBar({ showSearch = true }: TopBarProps) {
               ))
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate("/ai-insights")}>
+            <DropdownMenuItem onClick={() => navigate(aiPath)}>
               View all
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        )}
 
         {/* User Menu */}
         <DropdownMenu>
@@ -129,14 +136,19 @@ export function TopBar({ showSearch = true }: TopBarProps) {
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate("/employees")}>Profile</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate("/settings")}>Settings</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate(profilePath)}>Profile</DropdownMenuItem>
+            {!isEmployee && (
+              <DropdownMenuItem onClick={() => navigate(settingsPath)}>Settings</DropdownMenuItem>
+            )}
+            {!isEmployee && (
+              <DropdownMenuItem onClick={() => navigate(aiPath)}>AI Insights</DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-danger"
               onClick={() =>
                 logout.mutate(undefined, {
-                  onSettled: () => navigate("/login", { replace: true }),
+                  onSettled: () => navigate("/login", { replace: true, state: { from: dashboardPath } }),
                 })
               }
             >

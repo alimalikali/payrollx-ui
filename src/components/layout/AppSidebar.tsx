@@ -15,29 +15,41 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLogout } from "@/hooks";
+import { useCurrentUser } from "@/hooks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { toggleMobileMenu, setMobileMenuOpen } from "@/store/slices/uiSlice";
 
-const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Employees", url: "/employees", icon: Users },
-  { title: "Attendance", url: "/attendance", icon: Clock },
-  { title: "Leaves", url: "/leaves", icon: Calendar },
-  { title: "Payroll", url: "/payroll", icon: CreditCard },
-  { title: "Payslips", url: "/payslips", icon: FileText },
-  { title: "AI Insights", url: "/ai-insights", icon: Brain },
-  { title: "Settings", url: "/settings", icon: Settings },
+const hrNavItems = [
+  { title: "Dashboard", url: "/hr/dashboard", icon: LayoutDashboard },
+  { title: "Employees", url: "/hr/employees", icon: Users },
+  { title: "Attendance", url: "/hr/attendance", icon: Clock },
+  { title: "Leaves", url: "/hr/leaves", icon: Calendar },
+  { title: "Payroll", url: "/hr/payroll", icon: CreditCard },
+  { title: "Payslips", url: "/hr/payslips", icon: FileText },
+  { title: "AI Insights", url: "/hr/ai-insights", icon: Brain },
+  { title: "Settings", url: "/hr/settings", icon: Settings },
+];
+
+const employeeNavItems = [
+  { title: "Dashboard", url: "/employee/dashboard", icon: LayoutDashboard },
+  { title: "Attendance", url: "/employee/attendance", icon: Clock },
+  { title: "Leaves", url: "/employee/leaves", icon: Calendar },
+  { title: "Payslips", url: "/employee/payslips", icon: FileText },
+  { title: "AI Insights", url: "/employee/ai-insights", icon: Brain },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const logout = useLogout();
+  const userQuery = useCurrentUser();
+  const role = userQuery.data?.role;
+  const navItems = role === "employee" ? employeeNavItems : hrNavItems;
   const dispatch = useAppDispatch();
   const { mobileMenuOpen } = useAppSelector((state) => state.ui);
 
   const NavItem = ({ item }: { item: (typeof navItems)[0] }) => {
-    const isActive = location.pathname === item.url;
+    const isActive = location.pathname === item.url || location.pathname.startsWith(`${item.url}/`);
     return (
       <RouterNavLink
         to={item.url}

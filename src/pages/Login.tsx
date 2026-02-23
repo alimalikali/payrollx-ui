@@ -25,7 +25,11 @@ export default function Login() {
     login.mutate(
       { email, password },
       {
-        onSuccess: () => navigate("/", { replace: true }),
+        onSuccess: (response) => {
+          const role = response.data.user.role;
+          const target = role === "employee" ? "/employee/dashboard" : "/hr/dashboard";
+          navigate(target, { replace: true });
+        },
       }
     );
   };

@@ -5,8 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ProtectedRoute, RedirectIfAuthenticated } from "@/components/auth/ProtectedRoute";
-import Dashboard from "./pages/Dashboard";
+import { ProtectedRoute, RedirectIfAuthenticated, RoleHomeRedirect } from "@/components/auth/ProtectedRoute";
 import Login from "./pages/Login";
 import Employees from "./pages/Employees";
 import EmployeeProfile from "./pages/EmployeeProfile";
@@ -17,6 +16,10 @@ import Payslips from "./pages/Payslips";
 import AIInsights from "./pages/AIInsights";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import HrDashboard from "./pages/HrDashboard";
+import EmployeeDashboard from "./pages/EmployeeDashboard";
+import EmployeeAIInsights from "./pages/EmployeeAIInsights";
+import MyProfile from "./pages/MyProfile";
 
 const queryClient = new QueryClient();
 
@@ -40,71 +43,127 @@ const App = () => (
               path="/"
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <RoleHomeRedirect />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/employees"
+              path="/hr/dashboard"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={["admin", "hr"]}>
+                  <HrDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/hr/employees"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "hr"]}>
                   <Employees />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/employees/:id"
+              path="/hr/employees/:id"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={["admin", "hr"]}>
                   <EmployeeProfile />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/attendance"
+              path="/hr/attendance"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={["admin", "hr"]}>
                   <Attendance />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/leaves"
+              path="/hr/leaves"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={["admin", "hr"]}>
                   <Leaves />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/payroll"
+              path="/hr/payroll"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={["admin", "hr"]}>
                   <Payroll />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/payslips"
+              path="/hr/payslips"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={["admin", "hr"]}>
                   <Payslips />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/ai-insights"
+              path="/hr/ai-insights"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={["admin", "hr"]}>
                   <AIInsights />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/settings"
+              path="/hr/settings"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={["admin", "hr"]}>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employee/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["employee"]}>
+                  <EmployeeDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employee/attendance"
+              element={
+                <ProtectedRoute allowedRoles={["employee"]}>
+                  <Attendance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employee/leaves"
+              element={
+                <ProtectedRoute allowedRoles={["employee"]}>
+                  <Leaves />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employee/payslips"
+              element={
+                <ProtectedRoute allowedRoles={["employee"]}>
+                  <Payslips />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employee/ai-insights"
+              element={
+                <ProtectedRoute allowedRoles={["employee"]}>
+                  <EmployeeAIInsights />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employee/profile"
+              element={
+                <ProtectedRoute allowedRoles={["employee"]}>
+                  <MyProfile />
                 </ProtectedRoute>
               }
             />
