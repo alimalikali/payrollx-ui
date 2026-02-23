@@ -1,4 +1,4 @@
-import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
+import { NavLink as RouterNavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -14,6 +14,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLogout } from "@/hooks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { toggleMobileMenu, setMobileMenuOpen } from "@/store/slices/uiSlice";
 
@@ -30,6 +31,8 @@ const navItems = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const logout = useLogout();
   const dispatch = useAppDispatch();
   const { mobileMenuOpen } = useAppSelector((state) => state.ui);
 
@@ -43,7 +46,7 @@ export function AppSidebar() {
           "flex items-center gap-3 px-4 py-2.5 mx-3 rounded-lg text-sm font-medium transition-all duration-150",
           isActive
             ? "bg-primary-dim text-primary-text border-l-2 border-primary"
-            : "text-muted-foreground hover:bg-elevated hover:text-foreground"
+            : "text-muted-foreground hover:bg-elevated hover:text-foreground",
         )}
       >
         <item.icon className="h-[18px] w-[18px]" />
@@ -68,7 +71,17 @@ export function AppSidebar() {
 
       {/* Footer */}
       <div className="p-4 border-t border-border">
-        <button className="flex items-center gap-3 px-4 py-2.5 mx-0 w-full rounded-lg text-sm font-medium text-muted-foreground hover:bg-elevated hover:text-foreground transition-all duration-150">
+        <button
+          className="flex items-center gap-3 px-4 py-2.5 mx-0 w-full rounded-lg text-sm font-medium text-muted-foreground hover:bg-elevated hover:text-foreground transition-all duration-150"
+          onClick={() =>
+            logout.mutate(undefined, {
+              onSettled: () => {
+                dispatch(setMobileMenuOpen(false));
+                navigate("/login", { replace: true });
+              },
+            })
+          }
+        >
           <LogOut className="h-[18px] w-[18px]" />
           <span>Logout</span>
         </button>
@@ -103,7 +116,7 @@ export function AppSidebar() {
       <aside
         className={cn(
           "lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border flex flex-col transform transition-transform duration-200 ease-in-out",
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="absolute top-4 right-4">

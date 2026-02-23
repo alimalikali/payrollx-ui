@@ -19,12 +19,19 @@ import { useAttendance, useEmployee } from "@/hooks";
 export default function EmployeeProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const employeeIdentifier = id ? decodeURIComponent(id) : "";
 
-  const employeeQuery = useEmployee(id || "");
-  const attendanceQuery = useAttendance({ employeeId: id, limit: 10, page: 1 });
-
+  const employeeQuery = useEmployee(employeeIdentifier);
   const employee = employeeQuery.data?.data;
-  const attendanceRecords = attendanceQuery.data?.data || [];
+  const attendanceQuery = useAttendance(
+    { employeeId: employee?.id, limit: 10, page: 1 },
+    Boolean(employee?.id)
+  );
+
+  const attendanceRecords = useMemo(
+    () => attendanceQuery.data?.data ?? [],
+    [attendanceQuery.data?.data]
+  );
 
   const attendanceStats = useMemo(() => {
     return attendanceRecords.reduce(
@@ -40,6 +47,7 @@ export default function EmployeeProfile() {
   }, [attendanceRecords]);
 
   const fullName = employee?.name || `${employee?.firstName || ""} ${employee?.lastName || ""}`.trim();
+  const profileStatus = typeof employee?.status === "string" ? employee.status : "inactive";
 
   return (
     <AppShell>
@@ -51,6 +59,9 @@ export default function EmployeeProfile() {
 
         {employeeQuery.isLoading && <p className="text-sm text-muted-foreground">Loading employee...</p>}
         {employeeQuery.isError && <p className="text-sm text-danger">Unable to load employee profile.</p>}
+        {!employeeQuery.isLoading && !employeeQuery.isError && !employee && (
+          <p className="text-sm text-muted-foreground">Employee profile not found.</p>
+        )}
 
         {employee && (
           <>
@@ -63,7 +74,9 @@ export default function EmployeeProfile() {
                     <p className="text-muted-foreground font-mono">{employee.employeeId || employee.code || "N/A"}</p>
                   </div>
                 </div>
-                <StatusBadge variant={employee.status === "active" ? "success" : "neutral"}>{employee.status}</StatusBadge>
+                <StatusBadge variant={profileStatus === "active" ? "success" : "neutral"}>
+                  {profileStatus.replace("_", " ")}
+                </StatusBadge>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 text-sm">
@@ -86,6 +99,12 @@ export default function EmployeeProfile() {
                 <h3 className="text-lg font-semibold text-foreground">Recent Attendance</h3>
               </div>
               <div className="overflow-x-auto">
+                {attendanceQuery.isLoading && (
+                  <p className="px-4 py-3 text-sm text-muted-foreground">Loading attendance...</p>
+                )}
+                {attendanceQuery.isError && (
+                  <p className="px-4 py-3 text-sm text-danger">Unable to load attendance records.</p>
+                )}
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-elevated hover:bg-elevated">
@@ -97,19 +116,29 @@ export default function EmployeeProfile() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {attendanceRecords.map((record) => (
-                      <TableRow key={record.id} className="hover:bg-elevated transition-colors">
-                        <TableCell>{record.date}</TableCell>
-                        <TableCell>{record.checkIn || "-"}</TableCell>
-                        <TableCell>{record.checkOut || "-"}</TableCell>
-                        <TableCell>{Number(record.workingHours || record.hoursWorked || 0).toFixed(1)}</TableCell>
-                        <TableCell>
-                          <StatusBadge variant={record.status === "absent" ? "danger" : record.status === "late" ? "warning" : "success"}>
-                            {record.status.replace("_", " ")}
-                          </StatusBadge>
+                    {attendanceRecords.map((record, index) => {
+                      const safeStatus = record?.status || "present";
+                      return (
+                        <TableRow key={record?.id || `${record?.date || "row"}-${index}`} className="hover:bg-elevated transition-colors">
+                          <TableCell>{record?.date || "-"}</TableCell>
+                          <TableCell>{record?.checkIn || "-"}</TableCell>
+                          <TableCell>{record?.checkOut || "-"}</TableCell>
+                          <TableCell>{Number(record?.workingHours || record?.hoursWorked || 0).toFixed(1)}</TableCell>
+                          <TableCell>
+                            <StatusBadge variant={safeStatus === "absent" ? "danger" : safeStatus === "late" ? "warning" : "success"}>
+                              {safeStatus.replace("_", " ")}
+                            </StatusBadge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {!attendanceQuery.isLoading && !attendanceQuery.isError && attendanceRecords.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">
+                          No attendance records found.
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </div>

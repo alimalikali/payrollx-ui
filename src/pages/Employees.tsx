@@ -42,9 +42,9 @@ export default function Employees() {
   const employeesQuery = useEmployees(filters);
   const departmentsQuery = useEmployeesByDepartment();
 
-  const employees = employeesQuery.data?.data || [];
+  const employees = Array.isArray(employeesQuery.data?.data) ? employeesQuery.data.data : [];
   const meta = employeesQuery.data?.meta;
-  const departments = departmentsQuery.data?.data || [];
+  const departments = Array.isArray(departmentsQuery.data?.data) ? departmentsQuery.data.data : [];
   const totalPages = meta?.totalPages || 1;
 
   return (
@@ -130,12 +130,15 @@ export default function Employees() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {employees.map((employee) => {
+                {employees.map((employee, index) => {
                   const fullName = employee.name || `${employee.firstName || ""} ${employee.lastName || ""}`.trim();
-                  const status = employee.status || "inactive";
+                  const status = typeof employee.status === "string" ? employee.status : "inactive";
+                  const employeeRouteId = employee.id || employee.employeeId || employee.code;
+                  const encodedRouteId = employeeRouteId ? encodeURIComponent(String(employeeRouteId)) : null;
+                  const rowKey = employee.id || employee.employeeId || employee.code || `employee-${index}`;
 
                   return (
-                    <TableRow key={employee.id} className="hover:bg-elevated transition-colors">
+                    <TableRow key={rowKey} className="hover:bg-elevated transition-colors">
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <AvatarInitials name={fullName || "Unknown"} size="sm" />
@@ -149,14 +152,15 @@ export default function Employees() {
                       <TableCell className="text-muted-foreground">{employee.designation || "-"}</TableCell>
                       <TableCell>
                         <StatusBadge variant={status === "active" ? "success" : status === "on_leave" ? "warning" : "neutral"}>
-                          {status.replace("_", " ")}
+                          {String(status).replace("_", " ")}
                         </StatusBadge>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => navigate(`/employees/${employee.id}`)}
+                          onClick={() => encodedRouteId && navigate(`/employees/${encodedRouteId}`)}
+                          disabled={!encodedRouteId}
                           className="text-muted-foreground hover:text-foreground"
                         >
                           <Eye className="h-4 w-4 mr-1" />
@@ -166,6 +170,13 @@ export default function Employees() {
                     </TableRow>
                   );
                 })}
+                {!employeesQuery.isLoading && employees.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">
+                      No employees found.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>

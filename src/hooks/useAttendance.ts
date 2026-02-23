@@ -89,11 +89,12 @@ const attendanceApi = {
 };
 
 // Hooks
-export const useAttendance = (filters: AttendanceFilters = {}) => {
+export const useAttendance = (filters: AttendanceFilters = {}, enabled = true) => {
   return useQuery({
     queryKey: ['attendance', filters],
     queryFn: () => attendanceApi.getAll(filters),
     staleTime: 30 * 1000,
+    enabled,
   });
 };
 
