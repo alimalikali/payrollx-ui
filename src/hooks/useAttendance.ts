@@ -16,6 +16,7 @@ export interface AttendanceRecord {
   checkIn?: string;
   checkOut?: string;
   workingHours?: number;
+  hoursWorked?: number;
   overtimeHours?: number;
   status: 'present' | 'absent' | 'half_day' | 'late' | 'on_leave' | 'holiday' | 'weekend';
   notes?: string;

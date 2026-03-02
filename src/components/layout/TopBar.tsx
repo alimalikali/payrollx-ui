@@ -1,9 +1,14 @@
-import { Search, Bell, User } from "lucide-react";
+import { Bell, Search, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useCurrentUser, useLogout } from "@/hooks";
-import { useAIAlerts } from "@/hooks/useAI";
+import {
+  useCurrentUser,
+  useLogout,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotifications,
+} from "@/hooks";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +22,7 @@ interface TopBarProps {
   showSearch?: boolean;
 }
 
-const alertFilters = { page: 1, limit: 5, status: "new" } as const;
+const notificationFilters = { page: 1, limit: 10 } as const;
 
 export function TopBar({ showSearch = true }: TopBarProps) {
   const navigate = useNavigate();
@@ -25,30 +30,31 @@ export function TopBar({ showSearch = true }: TopBarProps) {
   const logout = useLogout();
   const user = userQuery.data;
   const isEmployee = user?.role === "employee";
-  const alertsQuery = useAIAlerts(alertFilters, !isEmployee);
-  const alerts = alertsQuery.data?.data || [];
-  const totalAlerts = alertsQuery.data?.meta?.total ?? alerts.length;
+  const notificationsQuery = useNotifications(notificationFilters, !!user && !isEmployee);
+  const markNotificationRead = useMarkNotificationRead();
+  const markAllNotificationsRead = useMarkAllNotificationsRead();
+  const notifications = notificationsQuery.data?.data || [];
+  const totalNotifications = notificationsQuery.data?.meta?.total ?? notifications.length;
+  const unreadCount = notifications.filter((item) => !item.isRead).length;
   const dashboardPath = isEmployee ? "/employee/dashboard" : "/hr/dashboard";
-  const aiPath = isEmployee ? "/employee/ai-insights" : "/hr/ai-insights";
-  const profilePath = isEmployee ? "/employee/profile" : "/hr/employees";
-  const settingsPath = "/hr/settings";
+  const leavesPath = isEmployee ? "/employee/leaves" : "/hr/leaves";
+  const profilePath = isEmployee
+    ? "/employee/profile"
+    : user?.employee?.id
+    ? `/hr/employees/${encodeURIComponent(user.employee.id)}`
+    : "/hr/employees";
+  const settingsPath = isEmployee ? "/settings" : "/hr/settings";
 
-  const getSeverityClasses = (severity: string) => {
-    switch (severity) {
-      case "critical":
-        return "bg-danger/15 text-danger";
-      case "high":
-        return "bg-warning/15 text-warning";
-      case "medium":
-        return "bg-info/15 text-info";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
+  const getTypeClasses = (type: string) => {
+    if (type === "leave_request_submitted") return "bg-warning/15 text-warning";
+    if (type === "leave_request_approved") return "bg-success/15 text-success";
+    if (type === "leave_request_rejected") return "bg-danger/15 text-danger";
+    if (type === "leave_request_cancelled") return "bg-muted text-muted-foreground";
+    return "bg-muted text-muted-foreground";
   };
 
   return (
     <header className="h-16 border-b border-border bg-surface flex items-center justify-between px-6">
-      {/* Search */}
       {showSearch ? (
         <div className="relative w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -61,64 +67,78 @@ export function TopBar({ showSearch = true }: TopBarProps) {
         <div />
       )}
 
-      {/* Right side */}
       <div className="flex items-center gap-4">
-        {/* Notifications */}
         {!isEmployee && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative text-muted-foreground hover:text-foreground"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-              {totalAlerts > 0 ? (
-                <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-danger text-[10px] font-bold text-white flex items-center justify-center">
-                  {totalAlerts > 9 ? "9+" : totalAlerts}
-                </span>
-              ) : null}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {alertsQuery.isLoading ? (
-              <DropdownMenuItem disabled>Loading notifications...</DropdownMenuItem>
-            ) : alertsQuery.isError ? (
-              <DropdownMenuItem disabled>Unable to load notifications.</DropdownMenuItem>
-            ) : alerts.length === 0 ? (
-              <DropdownMenuItem disabled>No new notifications.</DropdownMenuItem>
-            ) : (
-              alerts.map((alert) => (
-                <DropdownMenuItem
-                  key={alert.id}
-                  className="flex flex-col items-start gap-1"
-                  onClick={() => navigate(aiPath)}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${getSeverityClasses(alert.severity)}`}>
-                      {alert.severity}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(alert.createdAt).toLocaleString()}
-                    </span>
-                  </div>
-                  <span className="text-sm font-medium">{alert.title}</span>
-                  <span className="text-xs text-muted-foreground truncate w-full">{alert.description}</span>
-                </DropdownMenuItem>
-              ))
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate(aiPath)}>
-              View all
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative text-muted-foreground hover:text-foreground"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 ? (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-danger text-[10px] font-bold text-white flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                ) : null}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Notifications</span>
+                {totalNotifications > 0 && unreadCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => markAllNotificationsRead.mutate()}
+                  >
+                    Mark all read
+                  </Button>
+                )}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {notificationsQuery.isLoading ? (
+                <DropdownMenuItem disabled>Loading notifications...</DropdownMenuItem>
+              ) : notificationsQuery.isError ? (
+                <DropdownMenuItem disabled>Unable to load notifications.</DropdownMenuItem>
+              ) : notifications.length === 0 ? (
+                <DropdownMenuItem disabled>No notifications.</DropdownMenuItem>
+              ) : (
+                notifications.map((notification) => (
+                  <DropdownMenuItem
+                    key={notification.id}
+                    className="flex flex-col items-start gap-1"
+                    onClick={() => {
+                      if (!notification.isRead) {
+                        markNotificationRead.mutate(notification.id);
+                      }
+                      navigate(leavesPath);
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${getTypeClasses(notification.type)}`}>
+                        {notification.type.replace(/_/g, " ")}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(notification.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <span className="text-sm font-medium">{notification.title}</span>
+                    <span className="text-xs text-muted-foreground truncate w-full">{notification.message}</span>
+                  </DropdownMenuItem>
+                ))
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate(leavesPath)}>
+                Open leave management
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
 
-        {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -137,12 +157,7 @@ export function TopBar({ showSearch = true }: TopBarProps) {
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate(profilePath)}>Profile</DropdownMenuItem>
-            {!isEmployee && (
-              <DropdownMenuItem onClick={() => navigate(settingsPath)}>Settings</DropdownMenuItem>
-            )}
-            {!isEmployee && (
-              <DropdownMenuItem onClick={() => navigate(aiPath)}>AI Insights</DropdownMenuItem>
-            )}
+            <DropdownMenuItem onClick={() => navigate(settingsPath)}>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-danger"

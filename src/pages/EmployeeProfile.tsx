@@ -1,6 +1,20 @@
-import { useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Phone, Building, Briefcase } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import type { AxiosError } from "axios";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  Briefcase,
+  Building,
+  CalendarClock,
+  Clock3,
+  Mail,
+  Pencil,
+  Phone,
+  Trash2,
+  UserCheck,
+  UserX,
+} from "lucide-react";
+import { format } from "date-fns";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { AvatarInitials } from "@/components/AvatarInitials";
@@ -14,19 +28,91 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useAttendance, useEmployee } from "@/hooks";
+import {
+  toast,
+  useAttendance,
+  useCheckIn,
+  useCheckOut,
+  useCurrentUser,
+  useDeleteEmployee,
+  useEmployee,
+  useMyEmployee,
+  useUpdateEmployee,
+} from "@/hooks";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { isHR } from "@/lib/permissions";
+import { formatDuration, getElapsedSeconds } from "@/lib/attendance";
+
+type ApiErrorResponse = {
+  error?: {
+    message?: string;
+    details?: Array<{
+      message?: string;
+    }>;
+  };
+};
+
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  const axiosError = error as AxiosError<ApiErrorResponse>;
+  const apiError = axiosError.response?.data?.error;
+  const detailMessage = apiError?.details?.find((detail) => detail?.message)?.message;
+  return detailMessage || apiError?.message || fallback;
+};
 
 export default function EmployeeProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const employeeIdentifier = id ? decodeURIComponent(id) : "";
+  const routeEmployeeIdentifier = id ? decodeURIComponent(id) : "";
+  const [isEditOpen, setEditOpen] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [designation, setDesignation] = useState("");
+  const [status, setStatus] = useState("active");
+  const [now, setNow] = useState(() => new Date());
 
-  const employeeQuery = useEmployee(employeeIdentifier);
-  const employee = employeeQuery.data?.data;
+  const userQuery = useCurrentUser();
+  const isEmployeeUser = userQuery.data?.role === "employee";
+  const canManage = isHR(userQuery.data);
+  const employeeQuery = useEmployee(routeEmployeeIdentifier);
+  const myEmployeeQuery = useMyEmployee(!routeEmployeeIdentifier && isEmployeeUser);
+  const employee = employeeQuery.data?.data || myEmployeeQuery.data?.data;
+  const updateEmployee = useUpdateEmployee();
+  const deleteEmployee = useDeleteEmployee();
+  const checkIn = useCheckIn();
+  const checkOut = useCheckOut();
+
+  const attendanceFilters = isEmployeeUser
+    ? { limit: 30, page: 1 }
+    : { employeeId: employee?.id, limit: 30, page: 1 };
   const attendanceQuery = useAttendance(
-    { employeeId: employee?.id, limit: 10, page: 1 },
-    Boolean(employee?.id)
+    attendanceFilters,
+    isEmployeeUser ? true : Boolean(employee?.id)
   );
+
+  useEffect(() => {
+    if (!employee) {
+      return;
+    }
+    setFirstName(employee.firstName || "");
+    setLastName(employee.lastName || "");
+    setDesignation(employee.designation || "");
+    setStatus(employee.status || "active");
+  }, [employee]);
 
   const attendanceRecords = useMemo(
     () => attendanceQuery.data?.data ?? [],
@@ -46,20 +132,118 @@ export default function EmployeeProfile() {
     );
   }, [attendanceRecords]);
 
+  const today = format(new Date(), "yyyy-MM-dd");
+  const isProfileLoading = routeEmployeeIdentifier ? employeeQuery.isLoading : myEmployeeQuery.isLoading;
+  const isProfileError = routeEmployeeIdentifier ? employeeQuery.isError : myEmployeeQuery.isError;
+  const isOwnProfile = Boolean(
+    employee?.id &&
+      (userQuery.data?.employee?.id === employee.id || userQuery.data?.id === employee.userId)
+  );
+  const canSelfTrackAttendance = userQuery.data?.role === "employee" && isOwnProfile;
+  const todayRecord = attendanceRecords.find((record) => record.date === today);
+  const hasCheckedInToday = Boolean(todayRecord?.checkIn);
+  const hasCheckedOutToday = Boolean(todayRecord?.checkOut);
+  const isShiftActive = hasCheckedInToday && !hasCheckedOutToday;
+  const liveWorkedSeconds = useMemo(() => {
+    if (!todayRecord?.checkIn) {
+      return 0;
+    }
+    return getElapsedSeconds(todayRecord.date, todayRecord.checkIn, todayRecord.checkOut, now);
+  }, [todayRecord?.checkIn, todayRecord?.checkOut, todayRecord?.date, now]);
+
+  useEffect(() => {
+    if (!isShiftActive) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [isShiftActive]);
+
   const fullName = employee?.name || `${employee?.firstName || ""} ${employee?.lastName || ""}`.trim();
   const profileStatus = typeof employee?.status === "string" ? employee.status : "inactive";
+  const backPath = canManage ? "/hr/employees" : "/employee/dashboard";
+
+  const handleSave = () => {
+    if (!employee?.id) {
+      return;
+    }
+    updateEmployee.mutate(
+      {
+        id: employee.id,
+        data: { firstName, lastName, designation, status },
+      },
+      {
+        onSuccess: () => setEditOpen(false),
+      }
+    );
+  };
+
+  const handleDelete = () => {
+    if (!employee?.id) {
+      return;
+    }
+    deleteEmployee.mutate(employee.id, {
+      onSuccess: () => navigate("/hr/employees"),
+    });
+  };
+
+  const handleCheckIn = () => {
+    checkIn.mutate({}, {
+      onSuccess: () => {
+        setNow(new Date());
+        attendanceQuery.refetch();
+        toast({
+          title: "Checked in",
+          description: "Your check-in time has been saved.",
+        });
+      },
+      onError: (error: unknown) => {
+        toast({
+          title: "Check-in failed",
+          description: getApiErrorMessage(error, "Unable to check in."),
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
+  const handleCheckOut = () => {
+    checkOut.mutate({}, {
+      onSuccess: () => {
+        setNow(new Date());
+        attendanceQuery.refetch();
+        toast({
+          title: "Checked out",
+          description: "Your check-out time has been saved.",
+        });
+      },
+      onError: (error: unknown) => {
+        toast({
+          title: "Check-out failed",
+          description: getApiErrorMessage(error, "Unable to check out."),
+          variant: "destructive",
+        });
+      },
+    });
+  };
 
   return (
     <AppShell>
       <div className="space-y-6">
-        <Button variant="ghost" className="w-fit" onClick={() => navigate("/hr/employees") }>
+        <Button variant="ghost" className="w-fit" onClick={() => navigate(backPath)}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to employees
+          {canManage ? "Back to employees" : "Back to dashboard"}
         </Button>
 
-        {employeeQuery.isLoading && <p className="text-sm text-muted-foreground">Loading employee...</p>}
-        {employeeQuery.isError && <p className="text-sm text-danger">Unable to load employee profile.</p>}
-        {!employeeQuery.isLoading && !employeeQuery.isError && !employee && (
+        {isProfileLoading && <p className="text-sm text-muted-foreground">Loading employee...</p>}
+        {isProfileError && <p className="text-sm text-danger">Unable to load employee profile.</p>}
+        {!isProfileLoading && !isProfileError && !employee && (
           <p className="text-sm text-muted-foreground">Employee profile not found.</p>
         )}
 
@@ -79,6 +263,68 @@ export default function EmployeeProfile() {
                 </StatusBadge>
               </div>
 
+              {canManage && (
+                <div className="mt-4 flex gap-2">
+                  <Dialog open={isEditOpen} onOpenChange={setEditOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Edit Employee</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>First Name</Label>
+                            <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Last Name</Label>
+                            <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Designation</Label>
+                          <Input value={designation} onChange={(e) => setDesignation(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Status</Label>
+                          <Select value={status} onValueChange={setStatus}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="inactive">Inactive</SelectItem>
+                              <SelectItem value="on_leave">On Leave</SelectItem>
+                              <SelectItem value="terminated">Terminated</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button className="w-full" onClick={handleSave} disabled={updateEmployee.isPending}>
+                          {updateEmployee.isPending ? "Saving..." : "Save Changes"}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDelete}
+                    disabled={deleteEmployee.isPending}
+                    className="text-danger border-danger hover:bg-danger-dim"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {deleteEmployee.isPending ? "Deleting..." : "Delete"}
+                  </Button>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground"><Mail className="h-4 w-4" />{employee.email || "-"}</div>
                 <div className="flex items-center gap-2 text-muted-foreground"><Phone className="h-4 w-4" />{employee.phone || "-"}</div>
@@ -87,11 +333,53 @@ export default function EmployeeProfile() {
               </div>
             </div>
 
+            <div className="bg-card border border-border rounded-lg overflow-hidden">
+              <div className="p-4 border-b border-border flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Today's Attendance</h3>
+                  <p className="text-sm text-muted-foreground">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
+                </div>
+                {canSelfTrackAttendance && (
+                  <div className="flex items-center gap-2">
+                    <Button onClick={handleCheckIn} disabled={checkIn.isPending || hasCheckedInToday}>
+                      {checkIn.isPending ? "Checking in..." : "Check In"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleCheckOut}
+                      disabled={checkOut.isPending || !isShiftActive}
+                    >
+                      {checkOut.isPending ? "Checking out..." : "Check Out"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4">
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Date</p>
+                  <p className="mt-1 font-semibold text-foreground">{today}</p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Check In</p>
+                  <p className="mt-1 font-semibold text-foreground">{todayRecord?.checkIn || "-"}</p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Check Out</p>
+                  <p className="mt-1 font-semibold text-foreground">{todayRecord?.checkOut || "-"}</p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Working Timer</p>
+                  <p className="mt-1 font-semibold text-foreground">{formatDuration(liveWorkedSeconds)}</p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <KPICard title="Present Days" value={attendanceStats.present} />
-              <KPICard title="Absent Days" value={attendanceStats.absent} />
-              <KPICard title="Leave Days" value={attendanceStats.leave} />
-              <KPICard title="Hours Worked" value={attendanceStats.hours.toFixed(1)} />
+              <KPICard title="Present Days" value={attendanceStats.present} icon={UserCheck} />
+              <KPICard title="Absent Days" value={attendanceStats.absent} icon={UserX} />
+              <KPICard title="Leave Days" value={attendanceStats.leave} icon={CalendarClock} />
+              <KPICard title="Hours Worked" value={attendanceStats.hours.toFixed(1)} icon={Clock3} />
             </div>
 
             <div className="bg-card border border-border rounded-lg overflow-hidden">

@@ -23,12 +23,17 @@ export default function Login() {
     e.preventDefault();
 
     login.mutate(
-      { email, password },
+      { email: email.trim(), password },
       {
         onSuccess: (response) => {
           const role = response.data.user.role;
-          const target = role === "employee" ? "/employee/dashboard" : "/hr/dashboard";
-          navigate(target, { replace: true });
+          const mustChangePassword = response.data.user?.mustChangePassword;
+          const redirectPath = mustChangePassword
+            ? "/settings"
+            : role === "employee"
+            ? "/employee/dashboard"
+            : "/hr/dashboard";
+          navigate(redirectPath, { replace: true });
         },
       }
     );

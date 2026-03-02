@@ -211,11 +211,12 @@ const aiApi = {
 };
 
 // Hooks
-export const useAIDashboardStats = () => {
+export const useAIDashboardStats = (enabled = true) => {
   return useQuery({
     queryKey: ['aiDashboard'],
     queryFn: aiApi.getDashboardStats,
     staleTime: 60 * 1000,
+    enabled,
   });
 };
 
@@ -285,11 +286,12 @@ export const useSalaryDistribution = () => {
   });
 };
 
-export const usePayrollForecast = (months?: number) => {
+export const usePayrollForecast = (months?: number, enabled = true) => {
   return useQuery({
     queryKey: ['payrollForecast', months],
     queryFn: () => aiApi.generateForecast(months),
     staleTime: 5 * 60 * 1000,
+    enabled,
   });
 };
 

@@ -29,11 +29,12 @@ const settingsApi = {
   deleteHoliday: (id: string) => apiDelete<null>(`/settings/holidays/${id}`),
 };
 
-export const useSettings = () => {
+export const useSettings = (enabled = true) => {
   return useQuery({
     queryKey: ['settings'],
     queryFn: settingsApi.getSettings,
     staleTime: 5 * 60 * 1000,
+    enabled,
   });
 };
 
@@ -48,11 +49,12 @@ export const useUpdateSettings = () => {
   });
 };
 
-export const usePublicHolidays = (year?: number) => {
+export const usePublicHolidays = (year?: number, enabled = true) => {
   return useQuery({
     queryKey: ['publicHolidays', year],
     queryFn: () => settingsApi.getHolidays(year),
     staleTime: 5 * 60 * 1000,
+    enabled,
   });
 };
 

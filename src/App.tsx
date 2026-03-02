@@ -4,8 +4,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ProtectedRoute, RedirectIfAuthenticated, RoleHomeRedirect } from "@/components/auth/ProtectedRoute";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import {
+  ProtectedRoute,
+  RedirectIfAuthenticated,
+  RoleHomeRedirect,
+} from "@/components/auth/ProtectedRoute";
 import Login from "./pages/Login";
 import Employees from "./pages/Employees";
 import EmployeeProfile from "./pages/EmployeeProfile";
@@ -47,10 +51,11 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/hr/dashboard"
               element={
-                <ProtectedRoute allowedRoles={["admin", "hr"]}>
+                <ProtectedRoute allowedRoles={["hr"]}>
                   <HrDashboard />
                 </ProtectedRoute>
               }
@@ -58,7 +63,15 @@ const App = () => (
             <Route
               path="/hr/employees"
               element={
-                <ProtectedRoute allowedRoles={["admin", "hr"]}>
+                <ProtectedRoute allowedRoles={["hr"]}>
+                  <Employees />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employees"
+              element={
+                <ProtectedRoute allowedRoles={["hr"]}>
                   <Employees />
                 </ProtectedRoute>
               }
@@ -66,7 +79,15 @@ const App = () => (
             <Route
               path="/hr/employees/:id"
               element={
-                <ProtectedRoute allowedRoles={["admin", "hr"]}>
+                <ProtectedRoute>
+                  <EmployeeProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employees/:id"
+              element={
+                <ProtectedRoute>
                   <EmployeeProfile />
                 </ProtectedRoute>
               }
@@ -74,7 +95,15 @@ const App = () => (
             <Route
               path="/hr/attendance"
               element={
-                <ProtectedRoute allowedRoles={["admin", "hr"]}>
+                <ProtectedRoute allowedRoles={["hr"]}>
+                  <Attendance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/attendance"
+              element={
+                <ProtectedRoute>
                   <Attendance />
                 </ProtectedRoute>
               }
@@ -82,7 +111,15 @@ const App = () => (
             <Route
               path="/hr/leaves"
               element={
-                <ProtectedRoute allowedRoles={["admin", "hr"]}>
+                <ProtectedRoute allowedRoles={["hr"]}>
+                  <Leaves />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leaves"
+              element={
+                <ProtectedRoute>
                   <Leaves />
                 </ProtectedRoute>
               }
@@ -90,7 +127,15 @@ const App = () => (
             <Route
               path="/hr/payroll"
               element={
-                <ProtectedRoute allowedRoles={["admin", "hr"]}>
+                <ProtectedRoute allowedRoles={["hr"]}>
+                  <Payroll />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payroll"
+              element={
+                <ProtectedRoute allowedRoles={["hr"]}>
                   <Payroll />
                 </ProtectedRoute>
               }
@@ -98,7 +143,15 @@ const App = () => (
             <Route
               path="/hr/payslips"
               element={
-                <ProtectedRoute allowedRoles={["admin", "hr"]}>
+                <ProtectedRoute allowedRoles={["hr"]}>
+                  <Payslips />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payslips"
+              element={
+                <ProtectedRoute>
                   <Payslips />
                 </ProtectedRoute>
               }
@@ -106,7 +159,15 @@ const App = () => (
             <Route
               path="/hr/ai-insights"
               element={
-                <ProtectedRoute allowedRoles={["admin", "hr"]}>
+                <ProtectedRoute allowedRoles={["hr"]}>
+                  <AIInsights />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ai-insights"
+              element={
+                <ProtectedRoute allowedRoles={["hr"]}>
                   <AIInsights />
                 </ProtectedRoute>
               }
@@ -114,11 +175,20 @@ const App = () => (
             <Route
               path="/hr/settings"
               element={
-                <ProtectedRoute allowedRoles={["admin", "hr"]}>
+                <ProtectedRoute allowedRoles={["hr"]}>
                   <Settings />
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+
             <Route
               path="/employee/dashboard"
               element={
@@ -167,6 +237,15 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute allowedRoles={["employee"]}>
+                  <MyProfile />
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

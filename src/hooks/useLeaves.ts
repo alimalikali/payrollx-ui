@@ -19,11 +19,13 @@ export interface LeaveRequest {
   startDate: string;
   endDate: string;
   totalDays: number;
+  days?: number;
   isHalfDay: boolean;
   halfDayType?: 'first_half' | 'second_half';
   reason: string;
   attachmentUrl?: string;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  type?: string;
   approvedBy?: string;
   approvedByEmail?: string;
   approvedAt?: string;

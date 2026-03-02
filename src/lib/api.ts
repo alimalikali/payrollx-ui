@@ -48,15 +48,14 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const isRefreshRequest = originalRequest?.url?.includes('/auth/refresh');
 
     // If 401 and not already retrying, try to refresh token
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshRequest) {
       originalRequest._retry = true;
 
       try {
-        const response = await api.post('/auth/refresh', {
-          refreshToken: localStorage.getItem('refreshToken'),
-        });
+        const response = await api.post('/auth/refresh');
 
         const { accessToken: newToken } = response.data.data;
         setAccessToken(newToken);
@@ -67,7 +66,6 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed, logout user
         setAccessToken(null);
-        localStorage.removeItem('refreshToken');
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }

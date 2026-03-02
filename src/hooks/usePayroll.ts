@@ -113,6 +113,19 @@ const payrollApi = {
 
   getPayslipById: (id: string) => apiGet<Payslip>(`/payroll/payslips/${id}`),
 
+  getSalaryHistory: (filters: { employeeId?: string; months?: number } = {}) =>
+    apiGet<Array<{
+      id: string;
+      employeeId: string;
+      month: number;
+      year: number;
+      grossSalary: number;
+      totalDeductions: number;
+      netSalary: number;
+      status: string;
+      createdAt: string;
+    }>>('/payroll/salary-history', filters),
+
   calculateTax: (data: { grossSalary: number; isFiler?: boolean }) =>
     apiPost<TaxCalculation>('/payroll/calculate-tax', data),
 
@@ -189,16 +202,26 @@ export const usePayslip = (id: string) => {
   });
 };
 
+export const useSalaryHistory = (filters: { employeeId?: string; months?: number } = {}, enabled = true) => {
+  return useQuery({
+    queryKey: ['salaryHistory', filters],
+    queryFn: () => payrollApi.getSalaryHistory(filters),
+    enabled,
+    staleTime: 60 * 1000,
+  });
+};
+
 export const useCalculateTax = () => {
   return useMutation({
     mutationFn: payrollApi.calculateTax,
   });
 };
 
-export const useTaxSlabs = (type?: 'filer' | 'non_filer') => {
+export const useTaxSlabs = (type?: 'filer' | 'non_filer', enabled = true) => {
   return useQuery({
     queryKey: ['taxSlabs', type],
     queryFn: () => payrollApi.getTaxSlabs(type),
     staleTime: 10 * 60 * 1000, // 10 minutes
+    enabled,
   });
 };

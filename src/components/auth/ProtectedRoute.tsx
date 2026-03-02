@@ -1,20 +1,24 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useCurrentUser } from "@/hooks";
 import { getAccessToken } from "@/lib/api";
+import { hasRole, type AppRole } from "@/lib/permissions";
 
 interface RouteGuardProps {
   children: React.ReactNode;
-  allowedRoles?: Array<"admin" | "hr" | "employee">;
+  allowedRoles?: AppRole[];
 }
 
-const getDefaultHome = (role?: "admin" | "hr" | "employee") => {
-  if (role === "employee") return "/employee/dashboard";
+const getDefaultHome = (role?: AppRole) => {
+  if (role === "employee") {
+    return "/employee/dashboard";
+  }
   return "/hr/dashboard";
 };
 
 export function ProtectedRoute({ children, allowedRoles }: RouteGuardProps) {
   const token = getAccessToken();
-  const { data: user, isLoading } = useCurrentUser();
+  const location = useLocation();
+  const { data: user, isLoading, isError } = useCurrentUser();
 
   if (!token) {
     return <Navigate to="/login" replace />;
@@ -28,8 +32,17 @@ export function ProtectedRoute({ children, allowedRoles }: RouteGuardProps) {
     );
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+  if (isError || !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!hasRole(user, allowedRoles)) {
     return <Navigate to={getDefaultHome(user.role)} replace />;
+  }
+
+  const isPasswordChangeRoute = location.pathname === "/settings" || location.pathname === "/hr/settings";
+  if (user.mustChangePassword && !isPasswordChangeRoute) {
+    return <Navigate to="/settings" replace />;
   }
 
   return <>{children}</>;

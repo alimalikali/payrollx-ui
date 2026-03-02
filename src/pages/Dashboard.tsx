@@ -15,9 +15,11 @@ import { AttendanceHeatmap } from "@/components/AttendanceHeatmap";
 import {
   useAIDashboardStats,
   useAttendance,
+  useCurrentUser,
   useDailyStats,
   usePayrollForecast,
 } from "@/hooks";
+import { isHR } from "@/lib/permissions";
 
 const mapHeatmapStatus = (
   status: string,
@@ -31,10 +33,13 @@ const mapHeatmapStatus = (
 };
 
 export default function Dashboard() {
+  const userQuery = useCurrentUser();
+  const isHRUser = isHR(userQuery.data);
+
   const attendanceQuery = useAttendance({ limit: 100, page: 1 });
-  const dailyStatsQuery = useDailyStats();
-  const aiDashboardQuery = useAIDashboardStats();
-  const forecastQuery = usePayrollForecast(6);
+  const dailyStatsQuery = useDailyStats(undefined, isHRUser);
+  const aiDashboardQuery = useAIDashboardStats(isHRUser);
+  const forecastQuery = usePayrollForecast(6, isHRUser);
 
   const attendanceRecords = attendanceQuery.data?.data || [];
   const dailyStats = dailyStatsQuery.data?.data;
@@ -52,9 +57,9 @@ export default function Dashboard() {
     net: Number((item.projectedNetSalary / 1000000).toFixed(2)),
   }));
 
-  const totalEmployees = dailyStats?.totalEmployees || 0;
+  const totalEmployees = isHRUser ? dailyStats?.totalEmployees || 0 : 1;
   const payrollCost = forecastRows[0]?.projectedGrossSalary || 0;
-  const attendanceRate = dailyStats?.attendanceRate || 0;
+  const attendanceRate = isHRUser ? dailyStats?.attendanceRate || 0 : 0;
   const activeAlerts = aiStats?.alerts?.new_alerts || 0;
 
   return (
@@ -68,8 +73,8 @@ export default function Dashboard() {
         </div>
 
         {(attendanceQuery.isLoading ||
-          dailyStatsQuery.isLoading ||
-          aiDashboardQuery.isLoading) && (
+          (isHRUser && dailyStatsQuery.isLoading) ||
+          (isHRUser && aiDashboardQuery.isLoading)) && (
           <p className="text-sm text-muted-foreground">
             Loading dashboard data...
           </p>
@@ -89,75 +94,77 @@ export default function Dashboard() {
           />
           <KPICard
             title="Active Alerts"
-            value={activeAlerts}
+            value={isHRUser ? activeAlerts : "-"}
             icon={Bell}
-            trend={"Live"}
+            trend={isHRUser ? "Live" : undefined}
           />
           <KPICard
             title="Attendance Rate"
-            value={`${attendanceRate}%`}
+            value={isHRUser ? `${attendanceRate}%` : "-"}
             icon={BarChart2}
-            trend={"Today"}
+            trend={isHRUser ? "Today" : undefined}
           />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <ChartCard
-            title="Payroll Forecast"
-            subtitle="Projected gross and net payroll"
-            className="lg:col-span-3"
-          >
-            <div className="h-[300px] lg:h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="hsl(var(--border))"
-                  />
-                  <XAxis
-                    dataKey="month"
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                    tickLine={false}
-                    tickFormatter={(value) => `${value}M`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--popover))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                    formatter={(value: number) => [`PKR ${value}M`, ""]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="projected"
-                    stroke="hsl(var(--chart-1))"
-                    strokeWidth={2}
-                    name="Gross"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="net"
-                    stroke="hsl(var(--chart-2))"
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    name="Net"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
+          {isHRUser && (
+            <ChartCard
+              title="Payroll Forecast"
+              subtitle="Projected gross and net payroll"
+              className="lg:col-span-3"
+            >
+              <div className="h-[300px] lg:h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="hsl(var(--border))"
+                    />
+                    <XAxis
+                      dataKey="month"
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      tickLine={false}
+                      tickFormatter={(value) => `${value}M`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--popover))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                      }}
+                      formatter={(value: number) => [`PKR ${value}M`, ""]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="projected"
+                      stroke="hsl(var(--chart-1))"
+                      strokeWidth={2}
+                      name="Gross"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="net"
+                      stroke="hsl(var(--chart-2))"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="Net"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
+          )}
 
           <ChartCard
             title="Attendance Heatmap"
             subtitle="Latest attendance entries"
-            className="lg:col-span-2"
+            className={isHRUser ? "lg:col-span-2" : "lg:col-span-5"}
           >
             <AttendanceHeatmap data={heatmapData} size="sm" />
           </ChartCard>

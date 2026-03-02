@@ -10,8 +10,10 @@ import { apiPost, apiGet, setAccessToken, getAccessToken } from '../lib/api';
 export interface User {
   id: string;
   email: string;
-  role: 'admin' | 'hr' | 'employee';
+  role: 'hr' | 'employee';
+  permissions?: string[];
   isActive: boolean;
+  mustChangePassword?: boolean;
   employee?: {
     id: string;
     firstName: string;
@@ -68,7 +70,6 @@ export const useLogout = () => {
     mutationFn: authApi.logout,
     onSuccess: () => {
       setAccessToken(null);
-      localStorage.removeItem('refreshToken');
       queryClient.clear();
     },
   });
@@ -109,8 +110,7 @@ export const useAuth = () => {
     user,
     isLoading,
     isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin',
-    isHR: user?.role === 'hr' || user?.role === 'admin',
+    isHR: user?.role === 'hr',
     isEmployee: user?.role === 'employee',
     error,
     login: loginMutation.mutate,
