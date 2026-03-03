@@ -1,12 +1,15 @@
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAssetUrl } from "@/lib/api";
 
 interface AvatarInitialsProps {
   name: string;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
+  imageUrl?: string | null;
 }
 
-export function AvatarInitials({ name, size = "md", className }: AvatarInitialsProps) {
+export function AvatarInitials({ name, size = "md", className, imageUrl }: AvatarInitialsProps) {
   const initials = name
     .split(" ")
     .map((n) => n[0])
@@ -30,17 +33,20 @@ export function AvatarInitials({ name, size = "md", className }: AvatarInitialsP
     "bg-danger-dim text-danger-foreground",
   ];
   const colorIndex = name.charCodeAt(0) % colors.length;
+  const resolvedImageUrl = getAssetUrl(imageUrl);
 
   return (
-    <div
+    <Avatar
       className={cn(
-        "rounded-full flex items-center justify-center font-semibold",
+        "rounded-full",
         sizeClasses[size],
-        colors[colorIndex],
         className
       )}
     >
-      {initials}
-    </div>
+      {resolvedImageUrl ? <AvatarImage src={resolvedImageUrl} alt={name} /> : null}
+      <AvatarFallback className={cn("font-semibold", colors[colorIndex])}>
+        {initials}
+      </AvatarFallback>
+    </Avatar>
   );
 }

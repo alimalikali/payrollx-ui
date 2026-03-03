@@ -48,13 +48,12 @@ type ApiErrorResponse = {
   };
 };
 
-type WizardStep = "basic" | "job" | "salary" | "attendance" | "legal";
-const STEP_ORDER: WizardStep[] = ["basic", "job", "salary", "attendance", "legal"];
+type WizardStep = "basic" | "job" | "salary" | "legal";
+const STEP_ORDER: WizardStep[] = ["basic", "job", "salary", "legal"];
 const STEP_LABELS: Record<WizardStep, string> = {
   basic: "Basic Info",
   job: "Job Details",
   salary: "Salary Details",
-  attendance: "Attendance & Leave",
   legal: "Legal & ID",
 };
 
@@ -103,6 +102,7 @@ const DEFAULT_FORM_DATA: CreateEmployeeData = {
     legalIdNumber: "",
     taxIdentifier: "",
   },
+  password: "",
 };
 
 const getApiErrorMessage = (error: unknown, fallback: string) => {
@@ -131,8 +131,9 @@ export default function Employees() {
   const [formData, setFormData] = useState<CreateEmployeeData>(DEFAULT_FORM_DATA);
   const [createdCredentials, setCreatedCredentials] = useState<{
     email: string;
-    temporaryPassword: string;
+    password: string;
   } | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const filters = {
     page: currentPage,
@@ -159,11 +160,19 @@ export default function Employees() {
     setStep("basic");
     setCreatedCredentials(null);
     setFormData(DEFAULT_FORM_DATA);
+    setConfirmPassword("");
+  };
+
+  const getPasswordValidationError = (password: string): string | null => {
+    if (password.length < 8) return "Password must be at least 8 characters";
+    if (password.trim() !== password) return "Password cannot start or end with spaces";
+    if (!/[a-z]/.test(password)) return "Password must contain at least one lowercase letter";
+    if (!/[A-Z]/.test(password)) return "Password must contain at least one uppercase letter";
+    if (!/[0-9]/.test(password)) return "Password must contain at least one number";
+    return null;
   };
 
   const validateStep = (targetStep: WizardStep): string | null => {
-    if (targetStep === "attendance") return null;
-
     if (targetStep === "basic") {
       const info = formData.basicInfo;
       if (!info.fullName.trim()) return "Full Name is required";
@@ -195,10 +204,13 @@ export default function Employees() {
     if (targetStep === "legal") {
       const info = formData.legalInfo;
       if (!info.legalIdNumber.trim()) return "Legal ID Number is required";
-      if (!info.taxIdentifier.trim()) return "Tax Identifier is required";
+      if (!info.taxIdentifier.trim()) return "Username is required";
       if (info.legalIdType === "cnic" && !/^\d{5}-\d{7}-\d$/.test(info.legalIdNumber.trim())) {
         return "CNIC format must be XXXXX-XXXXXXX-X";
       }
+      const passwordValidationError = getPasswordValidationError(formData.password);
+      if (passwordValidationError) return passwordValidationError;
+      if (formData.password !== confirmPassword) return "Password and confirm password must match";
     }
 
     return null;
@@ -230,11 +242,12 @@ export default function Employees() {
     }
 
     createEmployee.mutate(formData, {
-      onSuccess: (response) => {
-        setCreatedCredentials(response.data?.loginCredentials || null);
-        setFormData(DEFAULT_FORM_DATA);
-        setStep("basic");
-      },
+        onSuccess: (response) => {
+          setCreatedCredentials(response.data?.loginCredentials || null);
+          setFormData(DEFAULT_FORM_DATA);
+          setStep("basic");
+          setConfirmPassword("");
+        },
       onError: (error) => {
         toast({
           title: "Create employee failed",
@@ -474,12 +487,6 @@ export default function Employees() {
                 </div>
               )}
 
-              {step === "attendance" && (
-                <div className="rounded-md border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                  Attendance fields are computed after onboarding: Leave Balance, Sick Leave, Casual Leave, Paid Leave, Attendance Records, and Overtime Hours.
-                </div>
-              )}
-
               {step === "legal" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -499,8 +506,27 @@ export default function Employees() {
                     <Input value={formData.legalInfo.legalIdNumber} onChange={(e) => setFormData((prev) => ({ ...prev, legalInfo: { ...prev.legalInfo, legalIdNumber: e.target.value } }))} />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label>Tax Identifier</Label>
+                    <Label>Username</Label>
                     <Input value={formData.legalInfo.taxIdentifier} onChange={(e) => setFormData((prev) => ({ ...prev, legalInfo: { ...prev.legalInfo, taxIdentifier: e.target.value } }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Login Password</Label>
+                    <Input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Confirm Password</Label>
+                    <Input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                  <div className="md:col-span-2 text-xs text-muted-foreground">
+                    HR sets the initial password here. The employee will be required to change it after first login.
                   </div>
                 </div>
               )}
@@ -520,7 +546,8 @@ export default function Employees() {
                 <div className="rounded-md border border-success/30 bg-success/10 p-3 text-sm">
                   <p className="font-semibold text-foreground">Login account created</p>
                   <p className="text-muted-foreground mt-1">Email: <span className="font-mono text-foreground">{createdCredentials.email}</span></p>
-                  <p className="text-muted-foreground">Temporary Password: <span className="font-mono text-foreground">{createdCredentials.temporaryPassword}</span></p>
+                  <p className="text-muted-foreground">Assigned Password: <span className="font-mono text-foreground">{createdCredentials.password}</span></p>
+                  <p className="text-muted-foreground mt-1">The employee can change this password from Settings after login.</p>
                 </div>
               )}
             </DialogContent>
@@ -611,7 +638,7 @@ export default function Employees() {
                     <TableRow key={rowKey} className="hover:bg-elevated transition-colors">
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <AvatarInitials name={fullName || "Unknown"} size="sm" />
+                          <AvatarInitials name={fullName || "Unknown"} size="sm" imageUrl={employee.profileImage} />
                           <div>
                             <p className="font-medium text-foreground">{fullName || "Unknown"}</p>
                             <p className="text-xs text-muted-foreground font-mono">{employee.employeeId || employee.code || "N/A"}</p>

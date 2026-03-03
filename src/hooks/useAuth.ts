@@ -10,7 +10,7 @@ import { apiPost, apiGet, setAccessToken, getAccessToken } from '../lib/api';
 export interface User {
   id: string;
   email: string;
-  role: 'hr' | 'employee';
+  role: 'admin' | 'hr' | 'employee';
   permissions?: string[];
   isActive: boolean;
   mustChangePassword?: boolean;
@@ -110,6 +110,8 @@ export const useAuth = () => {
     user,
     isLoading,
     isAuthenticated: !!user,
+    isAdmin: user?.role === 'admin',
+    isPrivileged: user?.role === 'admin' || user?.role === 'hr',
     isHR: user?.role === 'hr',
     isEmployee: user?.role === 'employee',
     error,

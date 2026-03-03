@@ -25,6 +25,71 @@ export interface HrDashboardData {
     salaryAnomalies: number;
     currentMonthNetSalaryProjection: number;
   };
+  attendanceSummary: {
+    today: {
+      present: number;
+      absent: number;
+      late: number;
+    };
+    lateArrivalsCount: number;
+    monthlyTrend: Array<{
+      label: string;
+      present: number;
+      absent: number;
+      late: number;
+    }>;
+    departmentWise: Array<{
+      departmentId: string;
+      departmentName: string;
+      present: number;
+      absent: number;
+      late: number;
+    }>;
+  };
+  payrollSummary: {
+    currentMonthTotalPayrollCost: number;
+    pendingSalaryProcessing: number;
+    totalSalaryCurrentMonth: number;
+    totalDeductions: number;
+    totalBonuses: number;
+    taxSummary: number;
+    currentMonthPayroll: {
+      id: string;
+      month: number;
+      year: number;
+      status: string;
+    } | null;
+  };
+  leaveSummary: {
+    pendingRequests: number;
+    approvedThisMonth: number;
+    distribution: Array<{
+      leaveTypeId: string;
+      leaveTypeName: string;
+      count: number;
+    }>;
+  };
+  pendingLeaveRequests: Array<{
+    id: string;
+    employeeId: string;
+    employeeName: string;
+    leaveTypeName: string;
+    startDate: string;
+    endDate: string;
+    totalDays: number;
+    reason: string;
+    status: string;
+  }>;
+  workforceAlerts: {
+    newEmployeesThisMonth: number;
+    employeesOnProbation: number;
+    recentlyResignedEmployees: number;
+    contractExpiryAlerts: Array<{
+      employeeId: string;
+      employeeName: string;
+      endDate: string;
+    }>;
+  };
 }
 
 export interface EmployeeDashboardData {

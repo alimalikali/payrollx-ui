@@ -21,9 +21,17 @@ import {
   useCheckOut,
   useCurrentUser,
   useDailyStats,
+  useEmployees,
 } from "@/hooks";
-import { isHR } from "@/lib/permissions";
+import { isPrivileged } from "@/lib/permissions";
 import { formatDuration, getElapsedSeconds } from "@/lib/attendance";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type ApiErrorResponse = {
   error?: {
@@ -45,20 +53,51 @@ const mapStatus = (status: string): "present" | "absent" | "late" | "leave" | "w
   return "present";
 };
 
+const formatStatusLabel = (status: string) => status.replace(/_/g, " ");
+
+const getAttendanceStatusVariant = (status: string) => {
+  if (status === "absent") return "danger";
+  if (status === "late") return "warning";
+  if (status === "on_leave" || status === "half_day") return "info";
+  if (status === "holiday" || status === "weekend") return "neutral";
+  return "success";
+};
+
+const statusOptions = [
+  { value: "all", label: "All statuses" },
+  { value: "present", label: "Present" },
+  { value: "late", label: "Late" },
+  { value: "absent", label: "Absent" },
+  { value: "on_leave", label: "On leave" },
+  { value: "half_day", label: "Half day" },
+  { value: "holiday", label: "Holiday" },
+  { value: "weekend", label: "Weekend" },
+];
+
 export default function Attendance() {
   const userQuery = useCurrentUser();
   const isEmployeeUser = userQuery.data?.role === "employee";
-  const isHRUser = isHR(userQuery.data);
-  const attendanceQuery = useAttendance({ limit: 100, page: 1 });
+  const isHRUser = isPrivileged(userQuery.data);
+  const today = format(new Date(), "yyyy-MM-dd");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const attendanceQuery = useAttendance({
+    limit: 100,
+    page: 1,
+    employeeId: isHRUser && selectedEmployeeId !== "all" ? selectedEmployeeId : undefined,
+    status: statusFilter === "all" ? undefined : statusFilter,
+  });
+  const todayAttendanceQuery = useAttendance({ date: today }, isEmployeeUser);
   const dailyStatsQuery = useDailyStats(undefined, isHRUser);
+  const employeesQuery = useEmployees({ limit: 100, page: 1 }, isHRUser);
   const checkIn = useCheckIn();
   const checkOut = useCheckOut();
   const [now, setNow] = useState(() => new Date());
 
   const records = attendanceQuery.data?.data || [];
+  const employees = employeesQuery.data?.data || [];
   const dailyStats = dailyStatsQuery.data?.data;
-  const today = format(new Date(), "yyyy-MM-dd");
-  const todayRecord = records.find((record) => record.date === today);
+  const todayRecord = todayAttendanceQuery.data?.data?.find((record) => record.date === today);
   const hasCheckedInToday = Boolean(todayRecord?.checkIn);
   const hasCheckedOutToday = Boolean(todayRecord?.checkOut);
   const isShiftActive = hasCheckedInToday && !hasCheckedOutToday;
@@ -68,7 +107,15 @@ export default function Attendance() {
     status: mapStatus(record.status),
   }));
 
-  const todayRecords = records.filter((record) => record.date === today);
+  const selectedEmployee = employees.find((employee) => employee.id === selectedEmployeeId);
+  const selectedEmployeeName = selectedEmployee
+    ? selectedEmployee.name || `${selectedEmployee.firstName || ""} ${selectedEmployee.lastName || ""}`.trim()
+    : "";
+  const historySubtitle = isHRUser
+    ? selectedEmployeeName
+      ? `Latest attendance records for ${selectedEmployeeName}`
+      : "Latest attendance records across employees"
+    : "Your latest attendance records";
   const liveWorkedSeconds = useMemo(() => {
     if (!todayRecord?.checkIn) {
       return 0;
@@ -95,6 +142,7 @@ export default function Attendance() {
       onSuccess: () => {
         setNow(new Date());
         attendanceQuery.refetch();
+        todayAttendanceQuery.refetch();
         toast({
           title: "Checked in",
           description: "Your check-in time has been saved.",
@@ -115,6 +163,7 @@ export default function Attendance() {
       onSuccess: () => {
         setNow(new Date());
         attendanceQuery.refetch();
+        todayAttendanceQuery.refetch();
         toast({
           title: "Checked out",
           description: "Your check-out time has been saved.",
@@ -183,17 +232,64 @@ export default function Attendance() {
           <AttendanceHeatmap data={heatmapData} size="lg" />
         </ChartCard>
 
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            {isHRUser && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">Employee</span>
+                <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                  <SelectTrigger className="w-full sm:w-64 bg-background">
+                    <SelectValue placeholder="All employees" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All employees</SelectItem>
+                    {employees.map((employee) => {
+                      const employeeLabel = employee.name || `${employee.firstName || ""} ${employee.lastName || ""}`.trim() || "Unknown";
+                      return (
+                        <SelectItem key={employee.id} value={employee.id}>
+                          {employeeLabel}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">Status</span>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-56 bg-background">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {isHRUser && employeesQuery.isError && (
+            <p className="text-sm text-danger">Unable to load employees.</p>
+          )}
+        </div>
+
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <div className="p-4 border-b border-border">
-            <h3 className="text-lg font-semibold text-foreground">Today's Attendance Log</h3>
-            <p className="text-sm text-muted-foreground">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
+            <h3 className="text-lg font-semibold text-foreground">Attendance History</h3>
+            <p className="text-sm text-muted-foreground">{historySubtitle}</p>
           </div>
 
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-elevated hover:bg-elevated">
-                  <TableHead>Employee</TableHead>
+                  {isHRUser && <TableHead>Employee</TableHead>}
+                  <TableHead>Date</TableHead>
                   <TableHead>Check In</TableHead>
                   <TableHead>Check Out</TableHead>
                   <TableHead>Hours</TableHead>
@@ -201,23 +297,26 @@ export default function Attendance() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {todayRecords.map((record) => (
+                {records.map((record) => (
                   <TableRow key={record.id} className="hover:bg-elevated transition-colors">
-                    <TableCell className="font-medium text-foreground">{record.employeeName || record.employeeCode || "-"}</TableCell>
+                    {isHRUser && (
+                      <TableCell className="font-medium text-foreground">{record.employeeName || record.employeeCode || "-"}</TableCell>
+                    )}
+                    <TableCell className="text-muted-foreground">{record.date}</TableCell>
                     <TableCell className="text-muted-foreground">{record.checkIn || "-"}</TableCell>
                     <TableCell className="text-muted-foreground">{record.checkOut || "-"}</TableCell>
                     <TableCell className="text-muted-foreground">{Number(record.workingHours || record.hoursWorked || 0).toFixed(1)}h</TableCell>
                     <TableCell>
-                      <StatusBadge variant={record.status === "absent" ? "danger" : record.status === "late" ? "warning" : "success"}>
-                        {record.status.replace("_", " ")}
+                      <StatusBadge variant={getAttendanceStatusVariant(record.status)}>
+                        {formatStatusLabel(record.status)}
                       </StatusBadge>
                     </TableCell>
                   </TableRow>
                 ))}
-                {todayRecords.length === 0 && (
+                {records.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">
-                      No attendance records found for today.
+                    <TableCell colSpan={isHRUser ? 6 : 5} className="text-center text-sm text-muted-foreground py-6">
+                      No attendance records found.
                     </TableCell>
                   </TableRow>
                 )}

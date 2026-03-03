@@ -6,6 +6,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_ORIGIN = new URL(API_BASE_URL).origin;
 
 // Create axios instance
 export const api = axios.create({
@@ -115,6 +116,12 @@ export const apiPatch = async <T>(url: string, data?: unknown): Promise<ApiRespo
 export const apiDelete = async <T>(url: string): Promise<ApiResponse<T>> => {
   const response = await api.delete<ApiResponse<T>>(url);
   return response.data;
+};
+
+export const getAssetUrl = (assetPath?: string | null) => {
+  if (!assetPath) return null;
+  if (/^https?:\/\//i.test(assetPath)) return assetPath;
+  return new URL(assetPath, API_ORIGIN).toString();
 };
 
 export default api;

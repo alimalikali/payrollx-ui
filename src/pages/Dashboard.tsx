@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { Users, DollarSign, Bell, BarChart2 } from "lucide-react";
 import {
   LineChart,
@@ -12,14 +13,29 @@ import { AppShell } from "@/components/layout/AppShell";
 import { KPICard } from "@/components/KPICard";
 import { ChartCard } from "@/components/ChartCard";
 import { AttendanceHeatmap } from "@/components/AttendanceHeatmap";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   useAIDashboardStats,
+  useApproveLeave,
   useAttendance,
+  useCancelLeave,
   useCurrentUser,
   useDailyStats,
+  useLeaves,
+  useMarkNotificationRead,
+  useNotifications,
   usePayrollForecast,
+  useRejectLeave,
 } from "@/hooks";
-import { isHR } from "@/lib/permissions";
+import { isPrivileged } from "@/lib/permissions";
 
 const mapHeatmapStatus = (
   status: string,
@@ -33,18 +49,56 @@ const mapHeatmapStatus = (
 };
 
 export default function Dashboard() {
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectRequestId, setRejectRequestId] = useState("");
+  const [rejectNotificationId, setRejectNotificationId] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
   const userQuery = useCurrentUser();
-  const isHRUser = isHR(userQuery.data);
+  const isHRUser = isPrivileged(userQuery.data);
 
   const attendanceQuery = useAttendance({ limit: 100, page: 1 });
   const dailyStatsQuery = useDailyStats(undefined, isHRUser);
   const aiDashboardQuery = useAIDashboardStats(isHRUser);
   const forecastQuery = usePayrollForecast(6, isHRUser);
+  const notificationsQuery = useNotifications({ page: 1, limit: 20, unreadOnly: true }, isHRUser);
+  const pendingLeavesQuery = useLeaves({ page: 1, limit: 50, status: "pending" });
+  const approveLeave = useApproveLeave();
+  const rejectLeave = useRejectLeave();
+  const cancelLeave = useCancelLeave();
+  const markNotificationRead = useMarkNotificationRead();
 
   const attendanceRecords = attendanceQuery.data?.data || [];
   const dailyStats = dailyStatsQuery.data?.data;
   const aiStats = aiDashboardQuery.data?.data;
   const forecastRows = forecastQuery.data?.data?.forecasts || [];
+  const notifications = notificationsQuery.data?.data || [];
+  const pendingLeaves = pendingLeavesQuery.data?.data || [];
+  const pendingLeaveMap = useMemo(
+    () => new Map(pendingLeaves.map((leave) => [leave.id, leave])),
+    [pendingLeaves]
+  );
+  const actionableNotifications = useMemo(
+    () =>
+      notifications.filter(
+        (notification) =>
+          notification.type === "leave_request_submitted" &&
+          !!notification.entityId &&
+          pendingLeaveMap.has(notification.entityId)
+      ),
+    [notifications, pendingLeaveMap]
+  );
+  const staleNotificationIds = useMemo(
+    () =>
+      notifications
+        .filter(
+          (notification) =>
+            notification.type === "leave_request_submitted" &&
+            !!notification.entityId &&
+            !pendingLeaveMap.has(notification.entityId)
+        )
+        .map((notification) => notification.id),
+    [notifications, pendingLeaveMap]
+  );
 
   const heatmapData = attendanceRecords.slice(0, 31).map((record) => ({
     date: record.date,
@@ -61,6 +115,46 @@ export default function Dashboard() {
   const payrollCost = forecastRows[0]?.projectedGrossSalary || 0;
   const attendanceRate = isHRUser ? dailyStats?.attendanceRate || 0 : 0;
   const activeAlerts = aiStats?.alerts?.new_alerts || 0;
+
+  const markAsReadIfNeeded = (notificationId: string, isRead: boolean) => {
+    if (!isRead) {
+      markNotificationRead.mutate(notificationId);
+    }
+  };
+
+  useEffect(() => {
+    staleNotificationIds.forEach((notificationId) => {
+      markNotificationRead.mutate(notificationId);
+    });
+  }, [markNotificationRead.mutate, staleNotificationIds]);
+
+  const openRejectDialog = (leaveId: string, notificationId: string) => {
+    setRejectRequestId(leaveId);
+    setRejectNotificationId(notificationId);
+    setRejectReason("");
+    setRejectDialogOpen(true);
+  };
+
+  const handleRejectSubmit = () => {
+    if (!rejectRequestId || !rejectReason.trim()) {
+      return;
+    }
+
+    rejectLeave.mutate(
+      { id: rejectRequestId, reason: rejectReason.trim() },
+      {
+        onSuccess: () => {
+          if (rejectNotificationId) {
+            markNotificationRead.mutate(rejectNotificationId);
+          }
+          setRejectDialogOpen(false);
+          setRejectRequestId("");
+          setRejectNotificationId("");
+          setRejectReason("");
+        },
+      }
+    );
+  };
 
   return (
     <AppShell>
@@ -169,7 +263,94 @@ export default function Dashboard() {
             <AttendanceHeatmap data={heatmapData} size="sm" />
           </ChartCard>
         </div>
+
+        {isHRUser && (
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <div className="p-4 border-b border-border">
+              <h3 className="text-lg font-semibold text-foreground">Recent Notifications</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Leave requests and approval activity from employees.
+              </p>
+            </div>
+
+            <div className="divide-y divide-border">
+              {notificationsQuery.isLoading ? (
+                <div className="p-4 text-sm text-muted-foreground">Loading notifications...</div>
+              ) : notificationsQuery.isError ? (
+                <div className="p-4 text-sm text-danger">Unable to load notifications.</div>
+              ) : actionableNotifications.length === 0 ? (
+                <div className="p-4 text-sm text-muted-foreground">No pending leave request notifications.</div>
+              ) : (
+                actionableNotifications.map((notification) => (
+                  <div key={notification.id} className="p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-foreground">{notification.title}</p>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(notification.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          approveLeave.mutate(notification.entityId!, {
+                            onSuccess: () => markAsReadIfNeeded(notification.id, notification.isRead),
+                          })
+                        }
+                        disabled={approveLeave.isPending}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openRejectDialog(notification.entityId!, notification.id)}
+                        disabled={rejectLeave.isPending}
+                      >
+                        Reject
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          cancelLeave.mutate(notification.entityId!, {
+                            onSuccess: () => markAsReadIfNeeded(notification.id, notification.isRead),
+                          })
+                        }
+                        disabled={cancelLeave.isPending}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Leave Request</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Reason</Label>
+              <Textarea
+                value={rejectReason}
+                onChange={(event) => setRejectReason(event.target.value)}
+                placeholder="Provide reason for rejection..."
+              />
+            </div>
+            <Button className="w-full" onClick={handleRejectSubmit} disabled={rejectLeave.isPending || !rejectReason.trim()}>
+              {rejectLeave.isPending ? "Submitting..." : "Reject Request"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

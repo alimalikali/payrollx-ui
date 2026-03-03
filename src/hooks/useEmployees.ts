@@ -4,7 +4,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiDelete, apiGet, apiPost, apiPut } from '../lib/api';
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '../lib/api';
 
 // Types
 export interface Employee {
@@ -15,7 +15,7 @@ export interface Employee {
   userRole?: string;
   loginCredentials?: {
     email: string;
-    temporaryPassword: string;
+    password: string;
   };
   firstName: string;
   lastName: string;
@@ -168,6 +168,7 @@ export interface CreateEmployeeData {
     legalIdNumber: string;
     taxIdentifier: string;
   };
+  password: string;
   firstName?: string;
   lastName?: string;
   email?: string;
@@ -181,7 +182,7 @@ export interface CreateEmployeeData {
 export interface CreateEmployeeResponse extends Employee {
   loginCredentials?: {
     email: string;
-    temporaryPassword: string;
+    password: string;
   };
 }
 
@@ -241,6 +242,9 @@ const employeeApi = {
 
   uploadProfilePhoto: (data: UploadProfilePhotoPayload) =>
     apiPost<UploadProfilePhotoResponse>('/uploads/profile-photo', data),
+
+  updateMyProfileImage: (profileImage: string) =>
+    apiPatch<Employee>('/employees/me/profile-image', { profileImage }),
 
   getAttendanceLeaveSummary: (id: string, params?: { month?: number; year?: number; limit?: number }) =>
     apiGet<EmployeeAttendanceLeaveSummary>(`/employees/${id}/attendance-leave-summary`, params as Record<string, unknown>),
@@ -302,6 +306,20 @@ export const useCreateEmployee = () => {
 export const useUploadProfilePhoto = () => {
   return useMutation({
     mutationFn: employeeApi.uploadProfilePhoto,
+  });
+};
+
+export const useUpdateMyProfileImage = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (profileImage: string) => employeeApi.updateMyProfileImage(profileImage),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employee', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.invalidateQueries({ queryKey: ['employee'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+    },
   });
 };
 

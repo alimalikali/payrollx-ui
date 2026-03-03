@@ -1,5 +1,6 @@
-import { Bell, Search, User } from "lucide-react";
+import { Search, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { AvatarInitials } from "@/components/AvatarInitials";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +45,9 @@ export function TopBar({ showSearch = true }: TopBarProps) {
     ? `/hr/employees/${encodeURIComponent(user.employee.id)}`
     : "/hr/employees";
   const settingsPath = isEmployee ? "/settings" : "/hr/settings";
+  const displayName = user?.employee
+    ? `${user.employee.firstName || ""} ${user.employee.lastName || ""}`.trim()
+    : user?.email?.split("@")[0] || "User";
 
   const getTypeClasses = (type: string) => {
     if (type === "leave_request_submitted") return "bg-warning/15 text-warning";
@@ -145,9 +149,11 @@ export function TopBar({ showSearch = true }: TopBarProps) {
               variant="ghost"
               className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
             >
-              <div className="h-8 w-8 rounded-full bg-primary-dim flex items-center justify-center">
-                <User className="h-4 w-4 text-primary" />
-              </div>
+              <AvatarInitials
+                name={displayName}
+                size="sm"
+                imageUrl={user?.employee?.profileImage}
+              />
               <span className="text-sm font-medium hidden sm:inline">
                 {user?.employee?.firstName || user?.email?.split("@")[0] || "User"}
               </span>

@@ -3,7 +3,13 @@ import { apiGet, apiPatch, apiPost } from '../lib/api';
 
 export interface Notification {
   id: string;
-  type: 'leave_request_submitted' | 'leave_request_approved' | 'leave_request_rejected' | 'leave_request_cancelled';
+  type:
+    | 'leave_request_submitted'
+    | 'leave_request_approved'
+    | 'leave_request_rejected'
+    | 'leave_request_cancelled'
+    | 'salary_credited'
+    | 'company_notice';
   title: string;
   message: string;
   entityType?: string;
@@ -30,8 +36,11 @@ export const useNotifications = (
     queryKey: ['notifications', filters],
     queryFn: () => notificationsApi.getAll(filters),
     enabled,
-    staleTime: 10 * 1000,
-    refetchInterval: enabled ? 15 * 1000 : false,
+    staleTime: 0,
+    refetchInterval: enabled ? 5 * 1000 : false,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 };
 

@@ -131,6 +131,7 @@ export const useCreateLeave = () => {
       queryClient.invalidateQueries({ queryKey: ['leaves'] });
       queryClient.invalidateQueries({ queryKey: ['leaveBalance'] });
       queryClient.invalidateQueries({ queryKey: ['pendingLeaveCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 };
@@ -144,6 +145,7 @@ export const useApproveLeave = () => {
       queryClient.invalidateQueries({ queryKey: ['leaves'] });
       queryClient.invalidateQueries({ queryKey: ['leaveBalance'] });
       queryClient.invalidateQueries({ queryKey: ['pendingLeaveCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 };
@@ -157,6 +159,7 @@ export const useRejectLeave = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leaves'] });
       queryClient.invalidateQueries({ queryKey: ['pendingLeaveCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 };
@@ -169,6 +172,7 @@ export const useCancelLeave = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leaves'] });
       queryClient.invalidateQueries({ queryKey: ['leaveBalance'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 };

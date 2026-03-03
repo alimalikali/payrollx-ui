@@ -27,6 +27,7 @@ import {
   useUpdateSettings,
 } from "@/hooks";
 import { setAccessToken } from "@/lib/api";
+import { isPrivileged } from "@/lib/permissions";
 
 type ApiErrorResponse = {
   error?: {
@@ -55,7 +56,7 @@ const getPasswordValidationError = (password: string): string | null => {
 export default function Settings() {
   const navigate = useNavigate();
   const userQuery = useCurrentUser();
-  const isHRUser = userQuery.data?.role === "hr";
+  const isHRUser = isPrivileged(userQuery.data);
 
   const settingsQuery = useSettings(isHRUser);
   const updateSettings = useUpdateSettings();

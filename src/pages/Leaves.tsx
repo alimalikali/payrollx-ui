@@ -42,7 +42,8 @@ import {
   useMyEmployee,
   useRejectLeave,
 } from "@/hooks";
-import { isHR } from "@/lib/permissions";
+import { buildLeaveBalanceCards } from "@/lib/leaveBalance";
+import { isPrivileged } from "@/lib/permissions";
 
 const statusVariant = (status: string) => {
   if (status === "approved") return "success";
@@ -72,7 +73,7 @@ export default function Leaves() {
 
   const userQuery = useCurrentUser();
   const currentUser = userQuery.data;
-  const isHRUser = isHR(currentUser);
+  const isHRUser = isPrivileged(currentUser);
   const isEmployeeUser = currentUser?.role === "employee";
   const myEmployeeQuery = useMyEmployee(isEmployeeUser);
   const currentEmployeeId = currentUser?.employee?.id || myEmployeeQuery.data?.data?.id || "";
@@ -101,6 +102,10 @@ export default function Leaves() {
   const leaveTypes = useMemo(() => leaveTypesQuery.data?.data ?? [], [leaveTypesQuery.data]);
   const leaveBalance = useMemo(() => leaveBalanceQuery.data?.data ?? [], [leaveBalanceQuery.data]);
   const employees = useMemo(() => employeesQuery.data?.data ?? [], [employeesQuery.data]);
+  const leaveBalanceCards = useMemo(
+    () => buildLeaveBalanceCards(leaveTypes, leaveBalance),
+    [leaveBalance, leaveTypes]
+  );
   const pendingRequests = useMemo(
     () => requests.filter((request) => request.status === "pending"),
     [requests]
@@ -376,7 +381,7 @@ export default function Leaves() {
 
         {selectedEmployeeId && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {leaveBalance.map((item) => (
+            {leaveBalanceCards.map((item) => (
               <div key={item.leaveTypeId} className="bg-card border border-border rounded-lg p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="text-sm font-medium text-muted-foreground">{item.leaveTypeName}</h4>
