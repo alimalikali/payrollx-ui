@@ -1,15 +1,29 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
+type Theme = "dark" | "light";
+
+const getStoredTheme = (): Theme => {
+  try {
+    const stored = localStorage.getItem("payrollx-theme");
+    if (stored === "light" || stored === "dark") return stored;
+  } catch {
+    // ignore
+  }
+  return "dark";
+};
+
 interface UIState {
   sidebarCollapsed: boolean;
   chatbotOpen: boolean;
   mobileMenuOpen: boolean;
+  theme: Theme;
 }
 
 const initialState: UIState = {
   sidebarCollapsed: false,
   chatbotOpen: false,
   mobileMenuOpen: false,
+  theme: getStoredTheme(),
 };
 
 const uiSlice = createSlice({
@@ -34,6 +48,24 @@ const uiSlice = createSlice({
     setMobileMenuOpen: (state, action: PayloadAction<boolean>) => {
       state.mobileMenuOpen = action.payload;
     },
+    toggleTheme: (state) => {
+      state.theme = state.theme === "dark" ? "light" : "dark";
+      try {
+        localStorage.setItem("payrollx-theme", state.theme);
+        document.documentElement.classList.toggle("light", state.theme === "light");
+      } catch {
+        // ignore
+      }
+    },
+    setTheme: (state, action: PayloadAction<Theme>) => {
+      state.theme = action.payload;
+      try {
+        localStorage.setItem("payrollx-theme", action.payload);
+        document.documentElement.classList.toggle("light", action.payload === "light");
+      } catch {
+        // ignore
+      }
+    },
   },
 });
 
@@ -44,5 +76,7 @@ export const {
   setChatbotOpen,
   toggleMobileMenu,
   setMobileMenuOpen,
+  toggleTheme,
+  setTheme,
 } = uiSlice.actions;
 export default uiSlice.reducer;

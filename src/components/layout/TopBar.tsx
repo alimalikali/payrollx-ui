@@ -1,4 +1,4 @@
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, Sun, Moon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AvatarInitials } from "@/components/AvatarInitials";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { toggleTheme } from "@/store/slices/uiSlice";
 
 interface TopBarProps {
   showSearch?: boolean;
@@ -29,6 +31,8 @@ export function TopBar({ showSearch = true }: TopBarProps) {
   const navigate = useNavigate();
   const userQuery = useCurrentUser();
   const logout = useLogout();
+  const dispatch = useAppDispatch();
+  const { theme } = useAppSelector((state) => state.ui);
   const user = userQuery.data;
   const isEmployee = user?.role === "employee";
   const notificationsQuery = useNotifications(notificationFilters, !!user && !isEmployee);
@@ -72,6 +76,16 @@ export function TopBar({ showSearch = true }: TopBarProps) {
       )}
 
       <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => dispatch(toggleTheme())}
+          className="text-muted-foreground hover:text-foreground"
+          aria-label="Toggle theme"
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </Button>
         {!isEmployee && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

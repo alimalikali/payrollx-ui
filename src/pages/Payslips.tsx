@@ -26,7 +26,8 @@ export default function Payslips() {
   const [selectedPayslipId, setSelectedPayslipId] = useState<string | null>(null);
 
   const userQuery = useCurrentUser();
-  const employeeId = userQuery.data?.role === "employee" ? userQuery.data?.employee?.id : undefined;
+  const isEmployee = userQuery.data?.role === "employee";
+  const employeeId = isEmployee ? userQuery.data?.employee?.id : undefined;
 
   const payslipsQuery = usePayslips({ page: 1, limit: 100, employeeId });
   const payslips = payslipsQuery.data?.data || [];
@@ -56,7 +57,7 @@ export default function Payslips() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Payslips</h1>
-            <p className="text-muted-foreground mt-1">View and download employee payslips</p>
+            <p className="text-muted-foreground mt-1">{isEmployee ? "View and download your payslips" : "View and download employee payslips"}</p>
           </div>
           {latestSalary && (
             <div className="text-sm text-muted-foreground">
@@ -66,12 +67,14 @@ export default function Payslips() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
-          <Input
-            placeholder="Search employee..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-sm bg-background"
-          />
+          {!isEmployee && (
+            <Input
+              placeholder="Search employee..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-sm bg-background"
+            />
+          )}
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
             <SelectTrigger className="w-48 bg-background">
               <SelectValue placeholder="Select month" />

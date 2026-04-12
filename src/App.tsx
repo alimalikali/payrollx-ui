@@ -25,6 +25,8 @@ import EmployeeDashboard from "./pages/EmployeeDashboard";
 import EmployeeAIInsights from "./pages/EmployeeAIInsights";
 import MyProfile from "./pages/MyProfile";
 
+const HR_ROLES = ["admin", "hr"] as const;
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -55,7 +57,7 @@ const App = () => (
             <Route
               path="/hr/dashboard"
               element={
-                <ProtectedRoute allowedRoles={["hr"]}>
+                <ProtectedRoute allowedRoles={HR_ROLES}>
                   <HrDashboard />
                 </ProtectedRoute>
               }
@@ -63,7 +65,7 @@ const App = () => (
             <Route
               path="/hr/employees"
               element={
-                <ProtectedRoute allowedRoles={["hr"]}>
+                <ProtectedRoute allowedRoles={HR_ROLES}>
                   <Employees />
                 </ProtectedRoute>
               }
@@ -71,7 +73,7 @@ const App = () => (
             <Route
               path="/employees"
               element={
-                <ProtectedRoute allowedRoles={["hr"]}>
+                <ProtectedRoute allowedRoles={HR_ROLES}>
                   <Employees />
                 </ProtectedRoute>
               }
@@ -95,7 +97,7 @@ const App = () => (
             <Route
               path="/hr/attendance"
               element={
-                <ProtectedRoute allowedRoles={["hr"]}>
+                <ProtectedRoute allowedRoles={HR_ROLES}>
                   <Attendance />
                 </ProtectedRoute>
               }
@@ -111,7 +113,7 @@ const App = () => (
             <Route
               path="/hr/leaves"
               element={
-                <ProtectedRoute allowedRoles={["hr"]}>
+                <ProtectedRoute allowedRoles={HR_ROLES}>
                   <Leaves />
                 </ProtectedRoute>
               }
@@ -127,7 +129,7 @@ const App = () => (
             <Route
               path="/hr/payroll"
               element={
-                <ProtectedRoute allowedRoles={["hr"]}>
+                <ProtectedRoute allowedRoles={HR_ROLES}>
                   <Payroll />
                 </ProtectedRoute>
               }
@@ -135,7 +137,7 @@ const App = () => (
             <Route
               path="/payroll"
               element={
-                <ProtectedRoute allowedRoles={["hr"]}>
+                <ProtectedRoute allowedRoles={HR_ROLES}>
                   <Payroll />
                 </ProtectedRoute>
               }
@@ -143,7 +145,7 @@ const App = () => (
             <Route
               path="/hr/payslips"
               element={
-                <ProtectedRoute allowedRoles={["hr"]}>
+                <ProtectedRoute allowedRoles={HR_ROLES}>
                   <Payslips />
                 </ProtectedRoute>
               }
@@ -159,7 +161,7 @@ const App = () => (
             <Route
               path="/hr/ai-insights"
               element={
-                <ProtectedRoute allowedRoles={["hr"]}>
+                <ProtectedRoute allowedRoles={HR_ROLES}>
                   <AIInsights />
                 </ProtectedRoute>
               }
@@ -167,7 +169,7 @@ const App = () => (
             <Route
               path="/ai-insights"
               element={
-                <ProtectedRoute allowedRoles={["hr"]}>
+                <ProtectedRoute allowedRoles={HR_ROLES}>
                   <AIInsights />
                 </ProtectedRoute>
               }
@@ -175,7 +177,7 @@ const App = () => (
             <Route
               path="/hr/settings"
               element={
-                <ProtectedRoute allowedRoles={["hr"]}>
+                <ProtectedRoute allowedRoles={HR_ROLES}>
                   <Settings />
                 </ProtectedRoute>
               }
