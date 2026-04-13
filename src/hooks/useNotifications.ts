@@ -9,7 +9,9 @@ export interface Notification {
     | 'leave_request_rejected'
     | 'leave_request_cancelled'
     | 'salary_credited'
-    | 'company_notice';
+    | 'company_notice'
+    | 'new_notice'
+    | 'welcome';
   title: string;
   message: string;
   entityType?: string;

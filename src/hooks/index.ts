@@ -30,5 +30,8 @@ export * from './useSettings';
 // Notifications
 export * from './useNotifications';
 
+// Notices
+export * from './useNotices';
+
 // UI Hooks (existing)
 export { useToast, toast } from './use-toast';

@@ -8,6 +8,7 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Menu,
   Settings,
   User,
@@ -26,6 +27,7 @@ const hrNavItems = [
   { title: "Leaves", url: "/hr/leaves", icon: Calendar },
   { title: "Payroll", url: "/hr/payroll", icon: CreditCard },
   { title: "Payslips", url: "/hr/payslips", icon: FileText },
+  { title: "Notice Board", url: "/hr/notices", icon: Megaphone },
   { title: "AI Insights", url: "/hr/ai-insights", icon: Brain },
   { title: "Settings", url: "/hr/settings", icon: Settings },
 ];
@@ -36,6 +38,7 @@ const employeeNavItems = [
   { title: "Attendance", url: "/employee/attendance", icon: Clock },
   { title: "Leaves", url: "/employee/leaves", icon: Calendar },
   { title: "Payslips", url: "/employee/payslips", icon: FileText },
+  { title: "Notice Board", url: "/employee/notices", icon: Megaphone },
   { title: "AI Insights", url: "/employee/ai-insights", icon: Brain },
   { title: "Settings", url: "/settings", icon: Settings },
 ];

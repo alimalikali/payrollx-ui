@@ -24,6 +24,7 @@ import HrDashboard from "./pages/HrDashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import EmployeeAIInsights from "./pages/EmployeeAIInsights";
 import MyProfile from "./pages/MyProfile";
+import NoticeBoard from "./pages/NoticeBoard";
 
 const HR_ROLES = ["admin", "hr"] as const;
 
@@ -159,6 +160,14 @@ const App = () => (
               }
             />
             <Route
+              path="/hr/notices"
+              element={
+                <ProtectedRoute allowedRoles={HR_ROLES}>
+                  <NoticeBoard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/hr/ai-insights"
               element={
                 <ProtectedRoute allowedRoles={HR_ROLES}>
@@ -220,6 +229,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={["employee"]}>
                   <Payslips />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employee/notices"
+              element={
+                <ProtectedRoute allowedRoles={["employee"]}>
+                  <NoticeBoard />
                 </ProtectedRoute>
               }
             />
