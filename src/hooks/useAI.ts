@@ -100,6 +100,32 @@ export interface ChatMessage {
   responseTime: number;
 }
 
+export interface EmployeeRiskScore {
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string;
+  departmentName: string;
+  designation: string;
+  riskScore: number;
+  riskTier: 'low' | 'medium' | 'high' | 'critical';
+  activeAlertCount: number;
+  criticalCount: number;
+  highCount: number;
+  mediumCount: number;
+  alertTitles: string[];
+}
+
+export interface RiskScoreSummary {
+  scores: EmployeeRiskScore[];
+  summary: {
+    totalAtRisk: number;
+    criticalCount: number;
+    highCount: number;
+    mediumCount: number;
+    avgRiskScore: number;
+  };
+}
+
 export interface EmployeeAIInsights {
   employeeId: string;
   monthSummary: {
@@ -208,6 +234,8 @@ const aiApi = {
     apiGet<Array<{ role: string; content: string; timestamp: string }>>(`/ai/chatbot/history/${sessionId}`),
 
   getEmployeeInsights: () => apiGet<EmployeeAIInsights>('/ai/employee/me'),
+
+  getEmployeeRiskScores: () => apiGet<RiskScoreSummary>('/ai/fraud-detection/employee-risk'),
 };
 
 // Hooks
@@ -241,6 +269,8 @@ export const useUpdateAlertStatus = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['aiAlerts'] });
       queryClient.invalidateQueries({ queryKey: ['aiDashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['employeeRiskScores'] });
+      queryClient.invalidateQueries({ queryKey: ['fraudStats'] });
     },
   });
 };
@@ -254,6 +284,7 @@ export const useRunFraudDetection = () => {
       queryClient.invalidateQueries({ queryKey: ['aiAlerts'] });
       queryClient.invalidateQueries({ queryKey: ['fraudStats'] });
       queryClient.invalidateQueries({ queryKey: ['aiDashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['employeeRiskScores'] });
     },
   });
 };
@@ -339,5 +370,14 @@ export const useEmployeeAIInsights = () => {
     queryKey: ['employeeAIInsights'],
     queryFn: aiApi.getEmployeeInsights,
     staleTime: 60 * 1000,
+  });
+};
+
+export const useEmployeeRiskScores = (enabled = true) => {
+  return useQuery({
+    queryKey: ['employeeRiskScores'],
+    queryFn: aiApi.getEmployeeRiskScores,
+    staleTime: 2 * 60 * 1000,
+    enabled,
   });
 };

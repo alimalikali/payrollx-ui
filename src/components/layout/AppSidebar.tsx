@@ -11,6 +11,7 @@ import {
   Megaphone,
   Menu,
   Settings,
+  ShieldAlert,
   User,
   Users,
   X,
@@ -28,7 +29,7 @@ const hrNavItems = [
   { title: "Payroll", url: "/hr/payroll", icon: CreditCard },
   { title: "Payslips", url: "/hr/payslips", icon: FileText },
   { title: "Notice Board", url: "/hr/notices", icon: Megaphone },
-  { title: "AI Insights", url: "/hr/ai-insights", icon: Brain },
+  { title: "Fraud Detection", url: "/hr/ai-insights", icon: ShieldAlert },
   { title: "Settings", url: "/hr/settings", icon: Settings },
 ];
 

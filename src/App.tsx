@@ -17,7 +17,7 @@ import Attendance from "./pages/Attendance";
 import Leaves from "./pages/Leaves";
 import Payroll from "./pages/Payroll";
 import Payslips from "./pages/Payslips";
-import AIInsights from "./pages/AIInsights";
+import FraudDetection from "./pages/FraudDetection";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import HrDashboard from "./pages/HrDashboard";
@@ -171,7 +171,7 @@ const App = () => (
               path="/hr/ai-insights"
               element={
                 <ProtectedRoute allowedRoles={HR_ROLES}>
-                  <AIInsights />
+                  <FraudDetection />
                 </ProtectedRoute>
               }
             />
@@ -179,7 +179,7 @@ const App = () => (
               path="/ai-insights"
               element={
                 <ProtectedRoute allowedRoles={HR_ROLES}>
-                  <AIInsights />
+                  <FraudDetection />
                 </ProtectedRoute>
               }
             />
