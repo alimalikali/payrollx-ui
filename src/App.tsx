@@ -10,6 +10,7 @@ import {
   RedirectIfAuthenticated,
   RoleHomeRedirect,
 } from "@/components/auth/ProtectedRoute";
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Employees from "./pages/Employees";
 import EmployeeProfile from "./pages/EmployeeProfile";
@@ -38,6 +39,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            <Route path="/landing" element={<Landing />} />
             <Route
               path="/login"
               element={

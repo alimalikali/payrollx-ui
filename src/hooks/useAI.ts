@@ -128,6 +128,20 @@ export interface RiskScoreSummary {
 
 export interface EmployeeAIInsights {
   employeeId: string;
+  profile: {
+    id: string;
+    employeeId: string;
+    name: string;
+    designation: string;
+    departmentName: string;
+  } | null;
+  today: {
+    date: string;
+    status: string;
+    checkIn: string | null;
+    checkOut: string | null;
+    workingHours: number;
+  };
   monthSummary: {
     presentDays: number;
     absentDays: number;
@@ -139,6 +153,7 @@ export interface EmployeeAIInsights {
     leaveTypeName: string;
     remainingDays: number;
   }>;
+  pendingLeaves: number;
   latestPayslip: {
     month: number;
     year: number;

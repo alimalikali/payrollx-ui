@@ -14,6 +14,30 @@ interface Message {
   suggestions?: string[];
 }
 
+/** Renders bot message text with basic markdown: **bold**, bullet lines, newlines */
+function ChatText({ content }: { content: string }) {
+  const lines = content.split("\n");
+  return (
+    <span className="whitespace-pre-wrap">
+      {lines.map((line, i) => {
+        // Render bold segments: **text**
+        const parts = line.split(/(\*\*[^*]+\*\*)/g);
+        const rendered = parts.map((part, j) =>
+          part.startsWith("**") && part.endsWith("**")
+            ? <strong key={j}>{part.slice(2, -2)}</strong>
+            : part
+        );
+        return (
+          <span key={i}>
+            {rendered}
+            {i < lines.length - 1 && "\n"}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 const WELCOME_MESSAGE: Message = {
   id: "welcome",
   type: "bot",
@@ -171,7 +195,7 @@ export function Chatbot() {
                     <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:300ms]" />
                   </span>
                 ) : (
-                  <span className="whitespace-pre-wrap">{message.content}</span>
+                  <ChatText content={message.content} />
                 )}
               </div>
             </div>
